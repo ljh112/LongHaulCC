@@ -1,0 +1,19 @@
+# NS3构建文件
+.lock-waf*
+simulation/build/
+simulation/build/**/*
+.waf*
+.waf*/**/*
+*.pyc
+
+# 压缩包
+*.tar.gz
+
+# 临时文件
+*.tmp
+*.log
+*.o
+*.so
+
+# 文档临时文件
+~$*.docx

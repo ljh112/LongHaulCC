@@ -17,3 +17,6 @@ simulation/build/**/*
 
 # 文档临时文件
 ~$*.docx
+
+# trace 文件
+simulation/mix/mix.tr

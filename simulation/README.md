@@ -6,6 +6,12 @@ It is based on NS-3 version 3.17.
 ## Quick Start
 
 ### Build
+使用前需先配置 python2 环境并激活
+```
+conda create -n hpcc python=2.7
+conda activate hpcc
+```
+
 `./waf configure`
 
 Please note if gcc version > 5, compilation will fail due to some ns3 code style.  If this what you encounter, please use:

@@ -245,7 +245,7 @@ void RdmaHw::AddQueuePair(uint64_t size, uint16_t pg, Ipv4Address sip, Ipv4Addre
 	DataRate m_bps = m_nic[nic_idx].dev->GetDataRate();
 	qp->m_rate = m_bps;
 	qp->m_max_rate = m_bps;
-	if (m_cc_mode == 1){
+	if (m_cc_mode == 1 || m_cc_mode == 9){
 		qp->mlx.m_targetRate = m_bps;
 	}else if (m_cc_mode == 3){
 		qp->hp.m_curRate = m_bps;
@@ -386,7 +386,7 @@ int RdmaHw::ReceiveCnp(Ptr<Packet> p, CustomHeader &ch){
 	if (qp->m_rate == 0)			//lazy initialization	
 	{
 		qp->m_rate = dev->GetDataRate();
-		if (m_cc_mode == 1){
+		if (m_cc_mode == 1 || m_cc_mode == 9){
 			qp->mlx.m_targetRate = dev->GetDataRate();
 		}else if (m_cc_mode == 3){
 			qp->hp.m_curRate = dev->GetDataRate();
@@ -461,7 +461,7 @@ int RdmaHw::ReceiveAck(Ptr<Packet> p, CustomHeader &ch){
 
 	// handle cnp
 	if (cnp){
-		if (m_cc_mode == 1){ // mlx version
+		if (m_cc_mode == 1 || m_cc_mode == 9){ // mlx version
 			// cnp_received_mlx(qp);
 			/** BiCC **/
 //			std::cout << "1、  " << ch.sip << " " << port << " " << qIndex << std::endl;
@@ -562,7 +562,7 @@ void RdmaHw::RecoverQueue(Ptr<RdmaQueuePair> qp){
 
 void RdmaHw::QpComplete(Ptr<RdmaQueuePair> qp){
 	NS_ASSERT(!m_qpCompleteCallback.IsNull());
-	if (m_cc_mode == 1){
+	if (m_cc_mode == 1 || m_cc_mode == 9){
 		Simulator::Cancel(qp->mlx.m_eventUpdateAlpha);
 		Simulator::Cancel(qp->mlx.m_eventDecreaseRate);
 		Simulator::Cancel(qp->mlx.m_rpTimer);

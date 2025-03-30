@@ -331,7 +331,7 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 		/* BICC */
 		uint8_t ecnbits = ch.GetIpv4EcnBits();
                 bool egressCongested = m_ecnEnabled && m_mmu->ShouldSendCN(idx, qIndex);
-                if(0 == m_mmu->node_id && ch.l3Prot == 0x11 && (egressCongested || ecnbits)){
+                if(9 == m_ccMode && 0 == m_mmu->node_id && ch.l3Prot == 0x11 && (egressCongested || ecnbits)){
 			sendCNPByDCI(p, idx);
 
 			PppHeader ppp;
@@ -367,7 +367,7 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 		Ptr<QbbNetDevice> dev = DynamicCast<QbbNetDevice>(m_devices[idx]);
 		uint32_t fip = ch.dip;
 
-		if(37 == m_mmu->node_id && ch.l3Prot == 0x11){
+		if(9 == m_ccMode && 37 == m_mmu->node_id && ch.l3Prot == 0x11){
 			if(forward_table.find(fip)!=forward_table.end() 
 					&& recv_table.find(fip)!=recv_table.end()
 				      	&& forward_table[fip]>iBDP){
@@ -379,7 +379,7 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 //			std::cout << bi_table[fip] << " ******1******" << std::endl;
 		}	
 	
-		if(37 == m_mmu->node_id && ch.l3Prot == 0xFC){
+		if(9 == m_ccMode && 37 == m_mmu->node_id && ch.l3Prot == 0xFC){
 //			std::cout << ch.udp.ih.recvBiCCBytes << " ******1******" << std::endl;
 //			uint32_t aSip = ch.sip;
 			recv_table[ch.sip] = ch.ack.ih.recvBiCCBytes;			

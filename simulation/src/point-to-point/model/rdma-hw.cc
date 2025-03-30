@@ -507,7 +507,9 @@ int RdmaHw::Receive(Ptr<Packet> p, CustomHeader &ch){
 		Ptr<RdmaQueuePair> qp = GetQp(ch.sip, port, qIndex);
 
 //		std::cout << "2、  " << ch.sip << " " << port << " " << qIndex << std::endl;
-		cnp_received_mlx(qp, false);
+		if(9 == m_cc_mode){ 
+			cnp_received_mlx(qp, false);
+		}
 	}
 	// BICC
 
@@ -750,30 +752,26 @@ void RdmaHw::CheckRateDecreaseMlx(Ptr<RdmaQueuePair> q, bool f){
 		}
 		if (clamp)
 			q->mlx.m_targetRate = q->m_rate;
-		/** test **/
-//		q->m_rate = std::max(m_minRate, q->m_rate * (1 - q->mlx.m_alpha / 2));
-/* BiCC */
+		
+		/* BiCC */
 		DataRate next_rate = std::max(m_minRate, q->m_rate * (1 - q->mlx.m_alpha / 2));
+		
+		if(9 == m_cc_mode){
+			if(f){ // not long loop
+				q->BiCC.Rns = next_rate;
+			}else{ // long loop
+				uint64_t diff = Simulator::Now().GetTimeStep() - q->BiCC.b_lastUpdateTs;
 
-		if(f){ // not long loop
-			q->BiCC.Rns = next_rate;
-//			std::cout << q->BiCC.Rns << std::endl;
-		}else{ // long loop
-//			std::cout << "Long loop occurs" << std::endl;
-			uint64_t diff = Simulator::Now().GetTimeStep() - q->BiCC.b_lastUpdateTs;
-//			std::cout << q->sip << " " << q->dip << " " << q->BiCC.Rns << " " << diff  << " " << q->m_baseRtt << std::endl;	
+				DataRate Rmin = q->BiCC.Rns <= next_rate ? q->BiCC.Rns : next_rate;
+				diff = diff <= q->m_baseRtt ? diff : q->m_baseRtt;
+				next_rate = next_rate * (1 - (double)diff/q->m_baseRtt) + Rmin * ((double)diff / q->m_baseRtt); 
 
-			DataRate Rmin = q->BiCC.Rns <= next_rate ? q->BiCC.Rns : next_rate;
-			diff = diff <= q->m_baseRtt ? diff : q->m_baseRtt;
-			next_rate = next_rate * (1 - (double)diff/q->m_baseRtt) + Rmin * ((double)diff / q->m_baseRtt); 
-//			std::cout << next_rate << std::endl;
-
-			q->BiCC.b_lastUpdateTs = Simulator::Now().GetTimeStep();
+				q->BiCC.b_lastUpdateTs = Simulator::Now().GetTimeStep();
+			}
 		}
 
 		q->m_rate = next_rate;
-/** BiCC **/
-		// q->m_rate = q->m_rate * 0.0;
+		/** BiCC **/
 
 		// reset rate increase related things
 		q->mlx.m_rpTimeStage = 0;

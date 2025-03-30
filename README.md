@@ -1,1 +1,1 @@
-Huawei RDMA Project
+Huawei

@@ -20,3 +20,6 @@ simulation/build/**/*
 
 # trace 文件
 simulation/mix/mix.tr
+
+# vscode 配置
+.vscode/

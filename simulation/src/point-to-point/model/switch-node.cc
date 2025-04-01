@@ -16,6 +16,13 @@
 #include <cmath>
 #include <ns3/event-id.h>
 
+/**	Flow Table Logging **/
+#include <fstream> 
+#include <iostream>
+#include "ns3/log.h" 
+#include "ns3/simulator.h"
+NS_LOG_COMPONENT_DEFINE("SwitchNode");
+/**	Flow Table Logging **/
 namespace ns3 {
 
 TypeId SwitchNode::GetTypeId (void)
@@ -97,6 +104,14 @@ SwitchNode::SwitchNode(){
 	rpTimer = Simulator::Schedule(MicroSeconds(TimeReset), &SwitchNode::CalcEvent, this);	
 	counter = 0;	
 	/** BICC **/
+
+	/** Flow Table Logging **/
+	/** 初始化 **/
+	m_flowTableLoggingEnabled = false;
+	m_targetFlowTableSwitchId = 0;
+	m_flowTableLogInterval = 1000000.0; // 默认1秒
+	m_flowTableLogFilename = "switch_flow_table.log";
+	/** Flow Table Logging **/
 }
 
 
@@ -147,6 +162,88 @@ void SwitchNode::CalcEvent(){
 	}
 }
 
+/** Flow Table **/
+/** 用于从自定义包头提取对应 key **/
+SwitchNode::FlowKey 
+SwitchNode::ExtractFlowKey(CustomHeader &ch) {
+    FlowKey key;
+    key.sip = ch.sip;
+    key.dip = ch.dip;
+    key.protocol = ch.l3Prot;
+    
+    // 根据协议类型设置端口
+    if (ch.l3Prot == 0x6) { // TCP
+        key.sport = ch.tcp.sport;
+        key.dport = ch.tcp.dport;
+    } else if (ch.l3Prot == 0x11) { // UDP
+        key.sport = ch.udp.sport;
+        key.dport = ch.udp.dport;
+    } else if (ch.l3Prot == 0xFC || ch.l3Prot == 0xFD) { // ACK/NACK
+        key.sport = ch.ack.sport;
+        key.dport = ch.ack.dport;
+    } else {
+        key.sport = 0;
+        key.dport = 0;
+    }
+    
+    return key;
+}
+
+/** 流表信息打印 **/
+void SwitchNode::PrintFlowTable(bool detailed) {
+    std::cout << "\n==== Flow Table for Switch " << GetId() << " at " 
+              << Simulator::Now().GetSeconds() << "s ====\n";
+    std::cout << "Total Active Flows: " << m_flowTable.size() << std::endl;
+    
+    if (detailed) {
+        for (const auto& entry : m_flowTable) {
+            const FlowKey& key = entry.first;
+            const FlowQueueStats& stats = entry.second;
+            
+            // 打印流标识信息
+            std::cout << "Flow: " 
+                      << Ipv4Address(key.sip) << ":" << key.sport << " -> " 
+                      << Ipv4Address(key.dip) << ":" << key.dport 
+                      << " [Protocol: " << (int)key.protocol << "]\n";
+                      
+            // 打印流状态信息
+            std::cout << "  Queue: " << stats.queueBytes << " bytes, " 
+                      << stats.queuePackets << " packets\n";
+            std::cout << "  Total: " << stats.totalBytes << " bytes, " 
+                      << stats.totalPackets << " packets\n";
+            std::cout << "  Last Updated: " << stats.lastUpdateTime.GetSeconds() << "s\n";
+            std::cout << "---------------------\n";
+
+			std::cout << "  maxQueuePackets: " << stats.maxQueuePackets << " bytes, " 
+                      << stats.maxQueueBytes << " packets\n";
+        }
+    }
+    
+    // 计算统计摘要
+    uint64_t totalBytes = 0;
+    uint64_t totalPackets = 0;
+    uint64_t activeQueueBytes = 0;
+    uint64_t activeQueuePackets = 0;
+    
+    for (const auto& entry : m_flowTable) {
+        const FlowQueueStats& stats = entry.second;
+        totalBytes += stats.totalBytes;
+        totalPackets += stats.totalPackets;
+        activeQueueBytes += stats.queueBytes;
+        activeQueuePackets += stats.queuePackets;
+    }
+    
+    // 打印摘要信息
+    std::cout << "Summary Statistics:\n";
+    std::cout << "  Active Queue: " << activeQueueBytes << " bytes, " 
+              << activeQueuePackets << " packets\n";
+    std::cout << "  Cumulative: " << totalBytes << " bytes, " 
+              << totalPackets << " packets\n";
+    std::cout << "  Avg Bytes Per Flow: " << (m_flowTable.empty() ? 0 : totalBytes / m_flowTable.size()) << "\n";
+    std::cout << "===========================\n";
+}
+
+/** Flow Table **/
 
 
 int SwitchNode::GetOutDev(Ptr<const Packet> p, CustomHeader &ch){
@@ -201,6 +298,42 @@ void SwitchNode::CheckAndSendResume(uint32_t inDev, uint32_t qIndex){
 }
 
 void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
+	/**	Flow Table**/
+	/** 包到达处对对应流表项更新 **/
+	if (ch.l3Prot == 0x11){ // 针对UDP流量进行信息统计
+		FlowKey key= ExtractFlowKey(ch);
+		// 查找或创建流记录
+		auto it = m_flowTable.find(key);
+		if (it == m_flowTable.end()) {
+			// 新流
+			FlowQueueStats stats;
+			stats.queueBytes = p->GetSize();
+			stats.queuePackets = 1;
+			stats.totalBytes = p->GetSize();
+			stats.totalPackets = 1;
+			stats.lastUpdateTime = Simulator::Now();
+			m_flowTable[key] = stats;
+			stats.maxQueueBytes = p->GetSize();  // 初始值即为当前值
+        	stats.maxQueuePackets = 1;           // 初始值即为当前值
+		} else {
+			// 更新现有流
+			it->second.queueBytes += p->GetSize();
+			it->second.queuePackets++;
+			it->second.totalBytes += p->GetSize();
+			it->second.totalPackets++;
+			it->second.lastUpdateTime = Simulator::Now();
+
+			// 更新最大队列大小
+			if (it->second.queueBytes > it->second.maxQueueBytes) {
+				it->second.maxQueueBytes = it->second.queueBytes;
+			}
+			if (it->second.queuePackets > it->second.maxQueuePackets) {
+				it->second.maxQueuePackets = it->second.queuePackets;
+			}
+		}
+	}
+	/**	Flow Table**/
+
 	int idx = GetOutDev(p, ch);
 //	std::cout << "*****" << std::endl;
 //	counter += p->GetSize();
@@ -531,6 +664,23 @@ void SwitchNode::SwitchNotifyDequeue(uint32_t ifIndex, uint32_t qIndex, Ptr<Pack
                 through_table[flowId] += p->GetSize();
 	}
 
+	/** Flow Table **/
+	/** 包发送后对对应流表项更新 **/
+	if (ch.l3Prot == 0x11){
+		FlowKey key= ExtractFlowKey(ch);
+		// 查找流记录
+		auto it = m_flowTable.find(key);
+		if (it != m_flowTable.end()) {
+			// 更新现有流
+			it->second.queueBytes -= p->GetSize();
+			it->second.queuePackets--;
+			it->second.lastUpdateTime = Simulator::Now();
+			// if (it->second.queueBytes == 0) {
+			// 	m_flowTable.erase(it); // 删除流记录
+			// }
+		}
+	}
+	/** Flow Table **/
 
 	if (qIndex != 0){
 		uint32_t inDev = t.GetFlowId();
@@ -767,5 +917,86 @@ void SwitchNode::sendCNPByDCI(Ptr<Packet> p, uint32_t ifIndex){
 	
 	SendToDev(newp, chh);
 }
+
+/** Flow Table Logging**/
+/** 用于检测不同流队列长度等信息是否统计正确 -- 已验证**/
+/** 初始化 Logging **/
+void SwitchNode::StartFlowTableLogging(uint32_t targetSwitchId, double intervalMs, std::string filename) {
+    m_flowTableLoggingEnabled = true;
+    m_targetFlowTableSwitchId = targetSwitchId;
+    m_flowTableLogFilename = filename;
+    m_flowTableLogInterval = intervalMs * 1000.0; // 转换为微秒
+    
+    // 立即执行一次记录，并安排定期执行
+    LogFlowTablePeriodically();
+}
+
+/** Logging 逻辑 **/
+void SwitchNode::LogFlowTablePeriodically() {
+    // 如果不是目标交换机或功能被禁用，则直接返回
+    if (!m_flowTableLoggingEnabled || m_mmu->node_id != m_targetFlowTableSwitchId) {
+        return;
+    }
+    
+    // 打开日志文件（追加模式）
+    std::ofstream logFile;
+    logFile.open(m_flowTableLogFilename.c_str(), std::ios::app | std::ios::out);
+    
+    if (!logFile.is_open()) {
+        NS_LOG_ERROR("Failed to open flow table log file: " << m_flowTableLogFilename);
+        return;
+    }
+    
+    // 记录当前时间
+    logFile << "\n==== Flow Table for Switch " << GetId() << " at " 
+            << Simulator::Now().GetSeconds() << "s ====\n";
+    logFile << "Total Active Flows: " << m_flowTable.size() << std::endl;
+    
+    // 记录流的详细信息
+    uint64_t totalBytes = 0;
+    uint64_t totalPackets = 0;
+    uint64_t activeQueueBytes = 0;
+    uint64_t activeQueuePackets = 0;
+    
+    for (const auto& entry : m_flowTable) {
+        const FlowKey& key = entry.first;
+        const FlowQueueStats& stats = entry.second;
+        
+        // 记录流的基本信息
+        logFile << "Flow: " 
+                << Ipv4Address(key.sip) << ":" << key.sport << " -> " 
+                << Ipv4Address(key.dip) << ":" << key.dport 
+                << " [Protocol: " << (int)key.protocol << "]\n";
+                
+        // 记录流的队列状态
+        logFile << "  Queue: " << stats.queueBytes << " bytes, " 
+                << stats.queuePackets << " packets\n";
+        logFile << "  Total: " << stats.totalBytes << " bytes, " 
+                << stats.totalPackets << " packets\n";
+        logFile << "  Last Updated: " << stats.lastUpdateTime.GetSeconds() << "s\n";
+        
+        // 更新统计数据
+        totalBytes += stats.totalBytes;
+        totalPackets += stats.totalPackets;
+        activeQueueBytes += stats.queueBytes;
+        activeQueuePackets += stats.queuePackets;
+    }
+    
+    // 记录汇总信息
+    logFile << "\nSummary Statistics:\n";
+    logFile << "  Active Queue: " << activeQueueBytes << " bytes, " 
+            << activeQueuePackets << " packets\n";
+    logFile << "  Cumulative: " << totalBytes << " bytes, " 
+            << totalPackets << " packets\n";
+    logFile << "  Avg Bytes Per Flow: " << (m_flowTable.empty() ? 0 : totalBytes / m_flowTable.size()) << "\n";
+    logFile << "===========================\n";
+    
+    logFile.close();
+    
+    // 安排下一次记录
+    m_flowTableLogEvent = Simulator::Schedule(MicroSeconds(m_flowTableLogInterval), 
+                                              &SwitchNode::LogFlowTablePeriodically, this);
+}
+/**	Flow Table Logging**/
 
 } /* namespace ns3 */

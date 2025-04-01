@@ -78,6 +78,66 @@ public:
 	double TimeReset;
 	void CalcEvent();
 	/** BiCC **/
+
+	/**	Flow Table **/
+	struct FlowKey {
+		uint32_t sip;          // 源IP
+		uint32_t dip;          // 目的IP
+		uint16_t sport;        // 源端口
+		uint16_t dport;        // 目的端口
+		uint8_t protocol;      // 协议类型
+		
+		// 用于哈希表的相等比较
+		bool operator==(const FlowKey &other) const {
+			return sip == other.sip && dip == other.dip && 
+				   sport == other.sport && dport == other.dport && 
+				   protocol == other.protocol;
+		}
+	};
+	
+	// 自定义哈希函数
+	struct FlowKeyHash {
+    	std::size_t operator()(const FlowKey& k) const {
+        	return std::hash<uint32_t>()(k.sip) ^ 
+            	   std::hash<uint32_t>()(k.dip) ^ 
+            	   std::hash<uint16_t>()(k.sport) ^ 
+               	   std::hash<uint16_t>()(k.dport) ^
+                  std::hash<uint8_t>()(k.protocol);
+    	}
+	};
+
+	// 每个流的队列统计信息
+	struct FlowQueueStats {
+		uint32_t queueBytes;       // 当前队列中的字节数
+		uint32_t queuePackets;     // 当前队列中的数据包数
+		uint32_t maxQueueBytes;    // 历史最大队列字节数 
+    	uint32_t maxQueuePackets;  // 历史最大队列包数 
+		uint32_t outDev;           // 出口设备索引
+		uint32_t qIndex;           // 队列索引/优先级
+		uint64_t totalBytes;       // 累计字节数
+		uint64_t totalPackets;     // 累计数据包数
+		Time lastUpdateTime;       // 最后更新时间
+	};
+	// 流表类型定义
+	typedef std::unordered_map<FlowKey, FlowQueueStats, FlowKeyHash> FlowTable;
+
+	// 流表，存储每个流的统计信息
+	FlowTable m_flowTable; 
+
+	// 从包和头部提取FlowKey
+    FlowKey ExtractFlowKey(CustomHeader &ch);
+	void PrintFlowTable(bool detailed = false);
+
+	// 流表日志相关
+	bool m_flowTableLoggingEnabled;
+    uint32_t m_targetFlowTableSwitchId;
+    std::string m_flowTableLogFilename;
+    double m_flowTableLogInterval;
+    EventId m_flowTableLogEvent;
+
+	void LogFlowTablePeriodically();
+    void StartFlowTableLogging(uint32_t targetSwitchId, double intervalMs, std::string filename);
+	/**	Flow Table **/
 };
 
 } /* namespace ns3 */

@@ -157,7 +157,6 @@ public:
 		}
 	};
 
-
 	// 自定义哈希函数
 	struct FlowKeyHash {
     	std::size_t operator()(const FlowKey& k) const {
@@ -188,11 +187,14 @@ public:
 	FlowTable m_flowTable; 
 
 	// 从包和头部提取FlowKey
+
     	FlowKey ExtractFlowKey(CustomHeader &ch);
+
 	void PrintFlowTable(bool detailed = false);
 
 	// 流表日志相关
 	bool m_flowTableLoggingEnabled;
+
 	uint32_t m_targetFlowTableSwitchId;
    	std::string m_flowTableLogFilename;
     	double m_flowTableLogInterval;

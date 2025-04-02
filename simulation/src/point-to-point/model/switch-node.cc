@@ -170,6 +170,7 @@ SwitchNode::SwitchNode(){
 	counter = 0;	
 	/** BICC **/
 
+
         /** DCQCN **/
         dcqMap.clear();
         tokenBuckets.clear();
@@ -1379,6 +1380,5 @@ void SwitchNode::HyperIncreaseMlx(FlowKey key){
 
 //      dcqMap[key] = mlx;
 }
-
 
 } /* namespace ns3 */

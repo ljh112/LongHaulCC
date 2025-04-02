@@ -16,6 +16,13 @@
 #include <cmath>
 #include <ns3/event-id.h>
 
+/**	Flow Table Logging **/
+#include <fstream> 
+#include <iostream>
+#include "ns3/log.h" 
+#include "ns3/simulator.h"
+NS_LOG_COMPONENT_DEFINE("SwitchNode");
+/**	Flow Table Logging **/
 namespace ns3 {
 
 TypeId SwitchNode::GetTypeId (void)
@@ -63,7 +70,71 @@ TypeId SwitchNode::GetTypeId (void)
                         DoubleValue(200),
                         MakeDoubleAccessor(&SwitchNode::maxBW),
                         MakeDoubleChecker<uint64_t>())
-			
+                .AddAttribute("EwmaGain",
+                                "Control gain parameter which determines the level of rate decrease",
+                                DoubleValue(1.0 / 16),
+                                MakeDoubleAccessor(&SwitchNode::m_g),
+                                MakeDoubleChecker<double>())
+                .AddAttribute ("RateOnFirstCnp",
+                                "the fraction of rate on first CNP",
+                                DoubleValue(1.0),
+                                MakeDoubleAccessor(&SwitchNode::m_rateOnFirstCNP),
+                                MakeDoubleChecker<double> ())
+                .AddAttribute("ClampTargetRate",
+                                "Clamp target rate.",
+                                BooleanValue(false),
+                                MakeBooleanAccessor(&SwitchNode::m_EcnClampTgtRate),
+                                MakeBooleanChecker())
+                .AddAttribute("RPTimerMlx",
+                                "The rate increase timer at RP in microseconds",
+                                DoubleValue(1500.0),
+                                MakeDoubleAccessor(&SwitchNode::m_rpgTimeReset),
+                                MakeDoubleChecker<double>())
+                .AddAttribute("RateDecreaseInterval",
+                                "The interval of rate decrease check",
+                                DoubleValue(4.0),
+                                MakeDoubleAccessor(&SwitchNode::m_rateDecreaseInterval),
+                                MakeDoubleChecker<double>())
+                .AddAttribute("FastRecoveryTimes",
+                                "The rate increase timer at RP",
+                                UintegerValue(5),
+                                MakeUintegerAccessor(&SwitchNode::m_rpgThreshold),
+                                MakeUintegerChecker<uint32_t>())
+                .AddAttribute("AlphaResumInterval",
+                                "The interval of resuming alpha",
+                                DoubleValue(55.0),
+                                MakeDoubleAccessor(&SwitchNode::m_alpha_resume_interval),
+                                MakeDoubleChecker<double>())
+                .AddAttribute("RateAI",
+                                "Rate increment unit in AI period",
+                                DataRateValue(DataRate("5Mb/s")),
+                                MakeDataRateAccessor(&SwitchNode::m_rai),
+                                MakeDataRateChecker())
+                .AddAttribute("RateHAI",
+                                "Rate increment unit in hyperactive AI period",
+                                DataRateValue(DataRate("50Mb/s")),
+                                MakeDataRateAccessor(&SwitchNode::m_rhai),
+                                MakeDataRateChecker())
+                .AddAttribute("MinRate",
+                                "Minimum rate of a throttled flow",
+                                DataRateValue(DataRate("100Mb/s")),
+                                MakeDataRateAccessor(&SwitchNode::m_minRate),
+                                MakeDataRateChecker())
+                .AddAttribute("lineRate",
+                                "Maximum rate of link",
+                                DataRateValue(DataRate("100Gb/s")),
+                                MakeDataRateAccessor(&SwitchNode::lineRate),
+                                MakeDataRateChecker())
+                .AddAttribute("slidingWin",
+                                "The size of sliding windows for Smooth Start of DCQCN",
+                                UintegerValue(0),
+                                MakeUintegerAccessor(&SwitchNode::initWin),
+                                MakeUintegerChecker<uint32_t>())
+                .AddAttribute("initWin",
+                                "The initial number of tokens",
+                                UintegerValue(1000),
+                                MakeUintegerAccessor(&SwitchNode::initWin),
+                                MakeUintegerChecker<uint32_t>())			
   ;
   return tid;
 }
@@ -91,12 +162,26 @@ SwitchNode::SwitchNode(){
 	forward_table.clear();
 	recv_table.clear();
 
-	through_table.clear();
+	// through_table.clear();
+	through_table2.clear();
 
 	/** BICC **/
 	rpTimer = Simulator::Schedule(MicroSeconds(TimeReset), &SwitchNode::CalcEvent, this);	
 	counter = 0;	
 	/** BICC **/
+
+        /** DCQCN **/
+        dcqMap.clear();
+        tokenBuckets.clear();
+        /** DCQCN **/
+
+	/** Flow Table Logging **/
+	/** 初始化 **/
+	m_flowTableLoggingEnabled = false;
+	m_targetFlowTableSwitchId = 0;
+	m_flowTableLogInterval = 1000000.0; // 默认1秒
+	m_flowTableLogFilename = "switch_flow_table.log";
+	/** Flow Table Logging **/
 }
 
 
@@ -114,7 +199,7 @@ void SwitchNode::CalcEvent(){
 		counter = 0;
 */
 
-                if(through_table.size() > 0){
+                if(through_table2.size() > 0){
 //                      uint64_t val = std::min((uint64_t)(counter * 1.0 * 8  / TimeReset * 1e6 /1024 / 1024 / 1024), maxBW);
 //                      uint64_t val = (uint64_t)(counter * 1.0 * 8  / TimeReset * 1e6 /1024 / 1024 / 1024);
 //                      uint64_t val = counter;
@@ -123,15 +208,38 @@ void SwitchNode::CalcEvent(){
 
                         // through_table[ch.sip] += p->GetSize();
 			uint64_t totalCnt = 0;
-                        for(auto kv : through_table){
-                                uint64_t key = kv.first;
+                        for(auto kv : through_table2){
+                   //             uint64_t key = kv.first;
                                 uint64_t cnt = kv.second;
                                 uint64_t val = std::min((uint64_t)(cnt * 1.0 * 8  / TimeReset * 1e6 /1024 / 1024 / 1024), maxBW);
 				totalCnt += val;
 //                                printf("%llu %llu %llu\n", clock(), key, val);
 //  				std::cout << through_table.size() << std::endl;
   			}
-			
+
+
+                        /** testDCQCN **
+                        for(auto kv : dcqMap){
+                                Mlx mlx = kv.second;
+//                              if(mlx.m_targetRate > DataRate(0))
+                                std::cout << mlx.m_rate.GetBitRate()/1000000000 << " " << mlx.m_targetRate.GetBitRate()/1000000000 << std::endl;
+                        }
+
+                        ** testDCQCN **/
+
+                        /** testRateLimiting **/
+                        for(auto kv : dcqMap){
+//                                Mlx mlx = kv.second;
+//                              if(mlx.m_targetRate > DataRate(0))
+                                //std::cout << mlx.m_rate.GetBitRate()/1000000000 << " " << mlx.m_targetRate.GetBitRate()/1000000000 << std::endl;
+
+                                tokenBuckets[kv.first] = std::max((uint64_t)(kv.second.m_targetRate.GetBitRate() * TimeReset / 1000000), m_minRate.GetBitRate());
+//                              std::cout << kv.first << "   " << tokenBuckets[kv.first] << std::endl;
+                        }
+                        /** testRateLimiting **/
+
+
+
 			printf("%llu %llu\n", clock(), std::min(totalCnt,maxBW));
 //			std::cout << through_table.size() << std::endl;
 //                        through_table.clear();
@@ -139,7 +247,7 @@ void SwitchNode::CalcEvent(){
 
 
 //             counter = 0;
-		through_table.clear();
+		through_table2.clear();
 
 
 		Simulator::Cancel(rpTimer);
@@ -147,6 +255,88 @@ void SwitchNode::CalcEvent(){
 	}
 }
 
+/** Flow Table **/
+/** 用于从自定义包头提取对应 key **/
+SwitchNode::FlowKey 
+SwitchNode::ExtractFlowKey(CustomHeader &ch) {
+    FlowKey key;
+    key.sip = ch.sip;
+    key.dip = ch.dip;
+    key.protocol = ch.l3Prot;
+    
+    // 根据协议类型设置端口
+    if (ch.l3Prot == 0x6) { // TCP
+        key.sport = ch.tcp.sport;
+        key.dport = ch.tcp.dport;
+    } else if (ch.l3Prot == 0x11) { // UDP
+        key.sport = ch.udp.sport;
+        key.dport = ch.udp.dport;
+    } else if (ch.l3Prot == 0xFC || ch.l3Prot == 0xFD) { // ACK/NACK
+        key.sport = ch.ack.sport;
+        key.dport = ch.ack.dport;
+    } else {
+        key.sport = 0;
+        key.dport = 0;
+    }
+    
+    return key;
+}
+
+/** 流表信息打印 **/
+void SwitchNode::PrintFlowTable(bool detailed) {
+    std::cout << "\n==== Flow Table for Switch " << GetId() << " at " 
+              << Simulator::Now().GetSeconds() << "s ====\n";
+    std::cout << "Total Active Flows: " << m_flowTable.size() << std::endl;
+    
+    if (detailed) {
+        for (const auto& entry : m_flowTable) {
+            const FlowKey& key = entry.first;
+            const FlowQueueStats& stats = entry.second;
+            
+            // 打印流标识信息
+            std::cout << "Flow: " 
+                      << Ipv4Address(key.sip) << ":" << key.sport << " -> " 
+                      << Ipv4Address(key.dip) << ":" << key.dport 
+                      << " [Protocol: " << (int)key.protocol << "]\n";
+                      
+            // 打印流状态信息
+            std::cout << "  Queue: " << stats.queueBytes << " bytes, " 
+                      << stats.queuePackets << " packets\n";
+            std::cout << "  Total: " << stats.totalBytes << " bytes, " 
+                      << stats.totalPackets << " packets\n";
+            std::cout << "  Last Updated: " << stats.lastUpdateTime.GetSeconds() << "s\n";
+            std::cout << "---------------------\n";
+
+			std::cout << "  maxQueuePackets: " << stats.maxQueuePackets << " bytes, " 
+                      << stats.maxQueueBytes << " packets\n";
+        }
+    }
+    
+    // 计算统计摘要
+    uint64_t totalBytes = 0;
+    uint64_t totalPackets = 0;
+    uint64_t activeQueueBytes = 0;
+    uint64_t activeQueuePackets = 0;
+    
+    for (const auto& entry : m_flowTable) {
+        const FlowQueueStats& stats = entry.second;
+        totalBytes += stats.totalBytes;
+        totalPackets += stats.totalPackets;
+        activeQueueBytes += stats.queueBytes;
+        activeQueuePackets += stats.queuePackets;
+    }
+    
+    // 打印摘要信息
+    std::cout << "Summary Statistics:\n";
+    std::cout << "  Active Queue: " << activeQueueBytes << " bytes, " 
+              << activeQueuePackets << " packets\n";
+    std::cout << "  Cumulative: " << totalBytes << " bytes, " 
+              << totalPackets << " packets\n";
+    std::cout << "  Avg Bytes Per Flow: " << (m_flowTable.empty() ? 0 : totalBytes / m_flowTable.size()) << "\n";
+    std::cout << "===========================\n";
+}
+
+/** Flow Table **/
 
 
 int SwitchNode::GetOutDev(Ptr<const Packet> p, CustomHeader &ch){
@@ -201,6 +391,42 @@ void SwitchNode::CheckAndSendResume(uint32_t inDev, uint32_t qIndex){
 }
 
 void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
+	/**	Flow Table**/
+	/** 包到达处对对应流表项更新 **/
+	if (ch.l3Prot == 0x11){ // 针对UDP流量进行信息统计
+		FlowKey key= ExtractFlowKey(ch);
+		// 查找或创建流记录
+		auto it = m_flowTable.find(key);
+		if (it == m_flowTable.end()) {
+			// 新流
+			FlowQueueStats stats;
+			stats.queueBytes = p->GetSize();
+			stats.queuePackets = 1;
+			stats.totalBytes = p->GetSize();
+			stats.totalPackets = 1;
+			stats.lastUpdateTime = Simulator::Now();
+			m_flowTable[key] = stats;
+			stats.maxQueueBytes = p->GetSize();  // 初始值即为当前值
+        	stats.maxQueuePackets = 1;           // 初始值即为当前值
+		} else {
+			// 更新现有流
+			it->second.queueBytes += p->GetSize();
+			it->second.queuePackets++;
+			it->second.totalBytes += p->GetSize();
+			it->second.totalPackets++;
+			it->second.lastUpdateTime = Simulator::Now();
+
+			// 更新最大队列大小
+			if (it->second.queueBytes > it->second.maxQueueBytes) {
+				it->second.maxQueueBytes = it->second.queueBytes;
+			}
+			if (it->second.queuePackets > it->second.maxQueuePackets) {
+				it->second.maxQueuePackets = it->second.queuePackets;
+			}
+		}
+	}
+	/**	Flow Table**/
+
 	int idx = GetOutDev(p, ch);
 //	std::cout << "*****" << std::endl;
 //	counter += p->GetSize();
@@ -211,16 +437,22 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
         if (ch.l3Prot == 0x11 || ch.l3Prot == 0x6){
 //              std::cout << ch.l3Prot << " "  << ch.sip << std::endl;
                 // through_table[ch.sip] += p->GetSize();
-		uint64_t flowId = ((uint64_t)ch.sip << 32) | ((uint64_t)ch.udp.pg << 16) | (uint64_t)ch.udp.sport;
+		// uint64_t flowId = ((uint64_t)ch.sip << 32) | ((uint64_t)ch.udp.pg << 16) | (uint64_t)ch.udp.sport;
+		FlowKey key= ExtractFlowKey(ch);
+		
 		// std::cout << key << std::endl;
-		through_table[flowId] += p->GetSize();
+		// through_table[flowId] += p->GetSize();
+		through_table2[key] += p->GetSize();
         }
 	else if(ch.l3Prot == 0xFC || ch.l3Prot == 0xFD){ // || ch.l3Prot == 0xFF || ch.l3Prot == 0xFE
 //              std::cout << ch.l3Prot << " "  << ch.dip << std::endl;
                 // through_table[ch.dip] += p->GetSize();
-                uint64_t flowId = ((uint64_t)ch.dip << 32) | ((uint64_t)ch.ack.pg << 16) | (uint64_t)ch.ack.dport;
-                // std::cout << key << std::endl;
-                through_table[flowId] += p->GetSize();
+                // uint64_t flowId = ((uint64_t)ch.dip << 32) | ((uint64_t)ch.ack.pg << 16) | (uint64_t)ch.ack.dport;
+                FlowKey key= ExtractFlowKey(ch);
+		
+		// std::cout << key << std::endl;
+                // through_table[flowId] += p->GetSize();
+		through_table2[key] += p->GetSize();
         }
 
 
@@ -366,8 +598,52 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 		/** BiCC third loop **/
 		Ptr<QbbNetDevice> dev = DynamicCast<QbbNetDevice>(m_devices[idx]);
 		uint32_t fip = ch.dip;
+		bool isSend = true;
 
 		if(9 == m_ccMode && 37 == m_mmu->node_id && ch.l3Prot == 0x11){
+			/** Remove ECN Signnal **/
+			PppHeader ppp;
+                        Ipv4Header h;
+                        p->RemoveHeader(ppp);
+                        p->RemoveHeader(h);
+                        h.SetEcn((Ipv4Header::EcnType)0x00);
+                        p->AddHeader(h);
+                        p->AddHeader(ppp);
+			/** Remove ECN Signnal **/
+
+                        /** token Rate Limiting **/
+                        // uint64_t flowId = ((uint64_t)ch.sip << 32) | ((uint64_t)ch.udp.pg << 16) | (uint64_t)ch.udp.sport;
+                       	FlowKey flowId = ExtractFlowKey(ch); 
+			
+			if(tokenBuckets.find(flowId) != tokenBuckets.end())
+                        {
+                                if(tokenBuckets[flowId] >= p->GetSize()){
+                                        tokenBuckets[flowId] -= p->GetSize();
+                                }else{
+
+                                        std::cout << tokenBuckets[flowId] << " ******1******"  << std::endl;
+ /*
+                                        for(auto kv : dcqMap){
+                                              std::cout << kv.first << "   " << kv.second.m_targetRate << "  " << kv.second.m_rate  << std::endl;
+                                        }
+*/
+                                        isSend = false;
+                                }
+                        }
+                        /** token Rate Limiting **/
+
+                        if(forward_table.find(fip)!=forward_table.end()
+                                        && recv_table.find(fip)!=recv_table.end()
+                                        && forward_table[fip]>iBDP){
+//                               std::cout << recv_table[fip] << " ******1******" << std::endl;
+
+                                isSend = false;
+                        }else{
+                                forward_table[fip] += p->GetSize();
+                        }
+
+
+/*
 			if(forward_table.find(fip)!=forward_table.end() 
 					&& recv_table.find(fip)!=recv_table.end()
 				      	&& forward_table[fip]>iBDP){
@@ -377,7 +653,8 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 
 			forward_table[fip] += p->GetSize();
 //			std::cout << bi_table[fip] << " ******1******" << std::endl;
-		}	
+*/
+	}	
 	
 		if(9 == m_ccMode && 37 == m_mmu->node_id && ch.l3Prot == 0xFC){
 //			std::cout << ch.udp.ih.recvBiCCBytes << " ******1******" << std::endl;
@@ -395,11 +672,42 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 //			}
 //			ch.udp.ih.recvBiCCBytes = 1;
 //			std::cout << ch.udp.ih.isLongLoop << " ******2******" << std::endl;	
+			
+                        /** testDCQCN **/
+                        // uint64_t flowId = ((uint64_t)ch.dip << 32) | ((uint64_t)ch.ack.pg << 16) | (uint64_t)ch.ack.dport;
+			FlowKey flowId = ExtractFlowKey(ch);
+
+                        if(dcqMap.find(flowId) == dcqMap.end()){
+                                Mlx mlx;
+                                mlx.m_first_cnp = true;
+                                mlx.m_rate = lineRate;
+                                mlx.m_targetRate = lineRate;
+
+                                dcqMap[flowId] =  mlx;
+                        }
+
+                        // uint8_t cnp = (ch.ack.flags >> qbbHeader::FLAG_CNP) & 1;
+
+                        if(ch.ack.flags == 1){
+                                // std::cout << ch.ack.flags << std::endl;
+                                // uint64_t flowId = ((uint64_t)ch.dip << 32) | ((uint64_t)ch.ack.pg << 16) | (uint64_t)ch.ack.dport;
+                                if(0 == slidingWin){
+                                        cnp_received_mlx(flowId);
+                                        slidingWin = initWin;
+                                }else{
+                                        slidingWin -= 1;
+                                }
+                        }
+                        /** testDCQCN **/
 		}
 
 		/** BiCC third loop **/	
-		
-		m_devices[idx]->SwitchSend(qIndex, p, ch);
+
+                if(isSend){
+                        m_devices[idx]->SwitchSend(qIndex, p, ch);
+                }
+
+//		m_devices[idx]->SwitchSend(qIndex, p, ch);
 
 	//	std::cout << dev->GetDataRate().GetBitRate() << std::endl;
 	}else
@@ -521,16 +829,44 @@ void SwitchNode::SwitchNotifyDequeue(uint32_t ifIndex, uint32_t qIndex, Ptr<Pack
 	if (ch.l3Prot == 0x11 || ch.l3Prot == 0x6){
 //		std::cout << ch.l3Prot << " "  << ch.sip << std::endl;	
 //		through_table[ch.sip] += p->GetSize();
-		uint64_t flowId = ((uint64_t)ch.sip << 32) | ((uint64_t)ch.udp.pg << 16) | (uint64_t)ch.udp.sport;
-                through_table[flowId] += p->GetSize();
+		// uint64_t flowId = ((uint64_t)ch.sip << 32) | ((uint64_t)ch.udp.pg << 16) | (uint64_t)ch.udp.sport;
+                FlowKey key= ExtractFlowKey(ch);
+
+                // std::cout << key << std::endl;
+                // through_table[flowId] += p->GetSize();
+                through_table2[key] += p->GetSize();		
+		// through_table[flowId] += p->GetSize();
 	}
 	else if(ch.l3Prot == 0xFC || ch.l3Prot == 0xFD){ // || ch.l3Prot == 0xFF || ch.l3Prot == 0xFE
 //		std::cout << ch.l3Prot << " "  << ch.dip << std::endl;
 //		through_table[ch.dip] += p->GetSize();
-                uint64_t flowId = ((uint64_t)ch.dip << 32) | ((uint64_t)ch.ack.pg << 16) | (uint64_t)ch.ack.dport;
-                through_table[flowId] += p->GetSize();
+                // uint64_t flowId = ((uint64_t)ch.dip << 32) | ((uint64_t)ch.ack.pg << 16) | (uint64_t)ch.ack.dport;
+                // through_table[flowId] += p->GetSize();
+                FlowKey key= ExtractFlowKey(ch);
+
+                // std::cout << key << std::endl;
+                // through_table[flowId] += p->GetSize();
+                through_table2[key] += p->GetSize();
+
 	}
 
+	/** Flow Table **/
+	/** 包发送后对对应流表项更新 **/
+	if (ch.l3Prot == 0x11){
+		FlowKey key= ExtractFlowKey(ch);
+		// 查找流记录
+		auto it = m_flowTable.find(key);
+		if (it != m_flowTable.end()) {
+			// 更新现有流
+			it->second.queueBytes -= p->GetSize();
+			it->second.queuePackets--;
+			it->second.lastUpdateTime = Simulator::Now();
+			// if (it->second.queueBytes == 0) {
+			// 	m_flowTable.erase(it); // 删除流记录
+			// }
+		}
+	}
+	/** Flow Table **/
 
 	if (qIndex != 0){
 		uint32_t inDev = t.GetFlowId();
@@ -767,5 +1103,282 @@ void SwitchNode::sendCNPByDCI(Ptr<Packet> p, uint32_t ifIndex){
 	
 	SendToDev(newp, chh);
 }
+
+/** Flow Table Logging**/
+/** 用于检测不同流队列长度等信息是否统计正确 -- 已验证**/
+/** 初始化 Logging **/
+void SwitchNode::StartFlowTableLogging(uint32_t targetSwitchId, double intervalMs, std::string filename) {
+    m_flowTableLoggingEnabled = true;
+    m_targetFlowTableSwitchId = targetSwitchId;
+    m_flowTableLogFilename = filename;
+    m_flowTableLogInterval = intervalMs * 1000.0; // 转换为微秒
+    
+    // 立即执行一次记录，并安排定期执行
+    LogFlowTablePeriodically();
+}
+
+/** Logging 逻辑 **/
+void SwitchNode::LogFlowTablePeriodically() {
+    // 如果不是目标交换机或功能被禁用，则直接返回
+    if (!m_flowTableLoggingEnabled || m_mmu->node_id != m_targetFlowTableSwitchId) {
+        return;
+    }
+    
+    // 打开日志文件（追加模式）
+    std::ofstream logFile;
+    logFile.open(m_flowTableLogFilename.c_str(), std::ios::app | std::ios::out);
+    
+    if (!logFile.is_open()) {
+        NS_LOG_ERROR("Failed to open flow table log file: " << m_flowTableLogFilename);
+        return;
+    }
+    
+    // 记录当前时间
+    logFile << "\n==== Flow Table for Switch " << GetId() << " at " 
+            << Simulator::Now().GetSeconds() << "s ====\n";
+    logFile << "Total Active Flows: " << m_flowTable.size() << std::endl;
+    
+    // 记录流的详细信息
+    uint64_t totalBytes = 0;
+    uint64_t totalPackets = 0;
+    uint64_t activeQueueBytes = 0;
+    uint64_t activeQueuePackets = 0;
+    
+    for (const auto& entry : m_flowTable) {
+        const FlowKey& key = entry.first;
+        const FlowQueueStats& stats = entry.second;
+        
+        // 记录流的基本信息
+        logFile << "Flow: " 
+                << Ipv4Address(key.sip) << ":" << key.sport << " -> " 
+                << Ipv4Address(key.dip) << ":" << key.dport 
+                << " [Protocol: " << (int)key.protocol << "]\n";
+                
+        // 记录流的队列状态
+        logFile << "  Queue: " << stats.queueBytes << " bytes, " 
+                << stats.queuePackets << " packets\n";
+        logFile << "  Total: " << stats.totalBytes << " bytes, " 
+                << stats.totalPackets << " packets\n";
+        logFile << "  Last Updated: " << stats.lastUpdateTime.GetSeconds() << "s\n";
+        
+        // 更新统计数据
+        totalBytes += stats.totalBytes;
+        totalPackets += stats.totalPackets;
+        activeQueueBytes += stats.queueBytes;
+        activeQueuePackets += stats.queuePackets;
+    }
+    
+    // 记录汇总信息
+    logFile << "\nSummary Statistics:\n";
+    logFile << "  Active Queue: " << activeQueueBytes << " bytes, " 
+            << activeQueuePackets << " packets\n";
+    logFile << "  Cumulative: " << totalBytes << " bytes, " 
+            << totalPackets << " packets\n";
+    logFile << "  Avg Bytes Per Flow: " << (m_flowTable.empty() ? 0 : totalBytes / m_flowTable.size()) << "\n";
+    logFile << "===========================\n";
+    
+    logFile.close();
+    
+    // 安排下一次记录
+    m_flowTableLogEvent = Simulator::Schedule(MicroSeconds(m_flowTableLogInterval), 
+                                              &SwitchNode::LogFlowTablePeriodically, this);
+}
+/**	Flow Table Logging**/
+
+
+#define PRINT_LOG 0
+/******************************
+ * Mellanox's version of DCQCN
+ *****************************/
+
+void SwitchNode::UpdateAlphaMlx(FlowKey key){
+        if(dcqMap.find(key) == dcqMap.end()) return;
+
+        auto mlx = dcqMap.find(key);
+
+        #if PRINT_LOG
+        //std::cout << Simulator::Now() << " alpha update:" << m_node->GetId() << ' ' << q->mlx.m_alpha << ' ' << (int)q->mlx.m_alpha_cnp_arrived << '\n';
+        //printf("%lu alpha update: %08x %08x %u %u %.6lf->", Simulator::Now().GetTimeStep(), q->sip.Get(), q->dip.Get(), q->sport, q->dport, q->mlx.m_alpha);
+        #endif
+
+        // std::cout << "****" << std::endl;
+
+        if (mlx->second.m_alpha_cnp_arrived){
+                mlx->second.m_alpha = (1 - m_g)*mlx->second.m_alpha + m_g;      //binary feedback
+        }else {
+                mlx->second.m_alpha = (1 - m_g)*mlx->second.m_alpha;    //binary feedback
+        }
+        #if PRINT_LOG
+        //printf("%.6lf\n", q->mlx.m_alpha);
+        #endif
+        mlx->second.m_alpha_cnp_arrived = false; // clear the CNP_arrived bit
+
+//      dcqMap[key] = mlx;
+
+        ScheduleUpdateAlphaMlx(key);
+}
+
+void SwitchNode::ScheduleUpdateAlphaMlx(FlowKey key){
+        if(dcqMap.find(key) == dcqMap.end()) return;
+        auto mlx = dcqMap.find(key);
+
+        mlx->second.m_eventUpdateAlpha = Simulator::Schedule(MicroSeconds(m_alpha_resume_interval), &SwitchNode::UpdateAlphaMlx, this, key);
+
+//      dcqMap[key] = mlx;
+}
+
+void SwitchNode::cnp_received_mlx(FlowKey key){
+        if(dcqMap.find(key) == dcqMap.end()) return;
+        auto mlx = dcqMap.find(key);
+
+//      std::cout << mlx.m_first_cnp << std::endl;
+
+        mlx->second.m_alpha_cnp_arrived = true; // set CNP_arrived bit for alpha update
+        mlx->second.m_decrease_cnp_arrived = true; // set CNP_arrived bit for rate decrease
+        if (mlx->second.m_first_cnp){
+                // init alpha
+                mlx->second.m_alpha = 1;
+                mlx->second.m_alpha_cnp_arrived = false;
+                // schedule alpha update
+                ScheduleUpdateAlphaMlx(key);
+                // schedule rate decrease
+                ScheduleDecreaseRateMlx(key, 1); // add 1 ns to make sure rate decrease is after alpha update
+                // set rate on first CNP
+                mlx->second.m_targetRate = mlx->second.m_rate = m_rateOnFirstCNP * mlx->second.m_rate;
+                mlx->second.m_first_cnp = false;
+        }
+
+//      dcqMap[key] = mlx;
+}
+
+void SwitchNode::CheckRateDecreaseMlx(FlowKey key){
+        if(dcqMap.find(key) == dcqMap.end()) return;
+        auto mlx = dcqMap.find(key);
+
+//      std::cout << dcqMap[key].m_decrease_cnp_arrived  << std::endl;
+
+        ScheduleDecreaseRateMlx(key, 0);
+
+        if (mlx->second.m_decrease_cnp_arrived){
+                bool clamp = true;
+                if (!m_EcnClampTgtRate){
+                        if (mlx->second.m_rpTimeStage == 0)
+                                clamp = false;
+                }
+
+                if (clamp){
+//                      std::cout << "XJXJXJXJXJX" << std::endl;
+                        mlx->second.m_targetRate = mlx->second.m_rate;
+                }
+
+                mlx->second.m_rate = std::max(m_minRate, mlx->second.m_rate * (1 - mlx->second.m_alpha / 2));
+                // std::cout << mlx.m_rate  << std::endl;
+
+                // reset rate increase related things
+                mlx->second.m_rpTimeStage = 0;
+                mlx->second.m_decrease_cnp_arrived = false;
+                Simulator::Cancel(mlx->second.m_rpTimer);
+
+//              std::cout << "XJXJXJXJXJX" << std::endl;
+                mlx->second.m_rpTimer = Simulator::Schedule(MicroSeconds(m_rpgTimeReset), &SwitchNode::RateIncEventTimerMlx, this, key);
+        }
+
+//      dcqMap[key] = mlx;
+
+//      std::cout << dcqMap[key].m_decrease_cnp_arrived  << std::endl;
+}
+
+void SwitchNode::ScheduleDecreaseRateMlx(FlowKey key, uint32_t delta){
+        if(dcqMap.find(key) == dcqMap.end()) return;
+        auto mlx = dcqMap.find(key);
+
+        mlx->second.m_eventDecreaseRate = Simulator::Schedule(MicroSeconds(m_rateDecreaseInterval) + NanoSeconds(delta), &SwitchNode::CheckRateDecreaseMlx, this, key);
+
+//      dcqMap[key] = mlx;
+}
+
+void SwitchNode::RateIncEventTimerMlx(FlowKey key){
+//      std::cout << "XJXJXJXJXJX" << std::endl;
+
+        if(dcqMap.find(key) == dcqMap.end()) return;
+        auto mlx = dcqMap.find(key);
+
+        mlx->second.m_rpTimer = Simulator::Schedule(MicroSeconds(m_rpgTimeReset), &SwitchNode::RateIncEventTimerMlx, this, key);
+//      std::cout << key  << std::endl;
+        RateIncEventMlx(key);
+        mlx->second.m_rpTimeStage++;
+
+//      dcqMap[key] = mlx;
+}
+
+void SwitchNode::RateIncEventMlx(FlowKey key){
+//      std::cout << key  << std::endl;
+
+        if(dcqMap.find(key) == dcqMap.end()) return;
+        auto mlx = dcqMap.find(key);
+
+//      std::cout << mlx.m_rpTimeStage  << std::endl;
+
+        // check which increase phase: fast recovery, active increase, hyper increase
+        if (mlx->second.m_rpTimeStage < m_rpgThreshold){ // fast recovery
+                FastRecoveryMlx(key);
+        }else if (mlx->second.m_rpTimeStage == m_rpgThreshold){ // active increase
+//              std::cout << mlx.m_targetRate  << std::endl;
+                ActiveIncreaseMlx(key);
+        }else { // hyper increase
+                HyperIncreaseMlx(key);
+        }
+
+        //dcqMap[key] = mlx;
+}
+
+void SwitchNode::FastRecoveryMlx(FlowKey key){
+        if(dcqMap.find(key) == dcqMap.end()) return;
+        auto mlx = dcqMap.find(key);
+
+        mlx->second.m_rate = (mlx->second.m_rate / 2) + (mlx->second.m_targetRate / 2);
+        //dcqMap[key] = mlx;
+}
+
+void SwitchNode::ActiveIncreaseMlx(FlowKey key){
+        if(dcqMap.find(key) == dcqMap.end()) return;
+        auto mlx = dcqMap.find(key);
+
+        /* get NIC
+        uint32_t nic_idx = GetNicIdxOfQp(q);
+        Ptr<QbbNetDevice> dev = m_nic[nic_idx].dev;
+        */
+        // increate rate
+        mlx->second.m_targetRate += m_rai;
+//      std::cout << mlx.m_targetRate  << std::endl;
+
+        if (mlx->second.m_targetRate > lineRate)
+                mlx->second.m_targetRate = lineRate;
+
+        mlx->second.m_rate = (mlx->second.m_rate / 2) + (mlx->second.m_targetRate / 2);
+
+//      dcqMap[key] = mlx;
+}
+
+void SwitchNode::HyperIncreaseMlx(FlowKey key){
+        if(dcqMap.find(key) == dcqMap.end()) return;
+        auto mlx = dcqMap.find(key);
+
+        /* get NIC
+        uint32_t nic_idx = GetNicIdxOfQp(q);
+        Ptr<QbbNetDevice> dev = m_nic[nic_idx].dev;
+        */
+
+        // increate rate
+
+        mlx->second.m_targetRate += m_rhai;
+        if (mlx->second.m_targetRate > lineRate)
+                mlx->second.m_targetRate = lineRate;
+
+        mlx->second.m_rate = (mlx->second.m_rate / 2) + (mlx->second.m_targetRate / 2);
+
+//      dcqMap[key] = mlx;
+}
+
 
 } /* namespace ns3 */

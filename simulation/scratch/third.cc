@@ -1038,8 +1038,35 @@ int main(int argc, char *argv[])
 	std::cout << "Running Simulation.\n";
 	fflush(stdout);
 	NS_LOG_INFO("Run Simulation.");
+
+	/** Flow Table Logging **/
+	// Ptr<SwitchNode> monitoredSwitch = DynamicCast<SwitchNode>(n.Get(37)); // switchId是你想要监控的交换机ID
+	// // 启动流表记录
+	// monitoredSwitch->StartFlowTableLogging(
+	// 	37,                          // 目标交换机ID
+	// 	1,                               // 间隔时间(毫秒)
+	// 	"switch_" + std::to_string(37) + "_flow_table.log"  // 日志文件名
+	// );
+	/** Flow Table Logging **/
+
 	Simulator::Stop(Seconds(simulator_stop_time));
 	Simulator::Run();
+
+	/** Flow Table **/
+	// 打印交换机37的流表信息
+	for (uint32_t i = 0; i < n.GetN(); i++) {
+	 	if (n.Get(i)->GetId() == 37 && n.Get(i)->GetNodeType() == 1) { // 是37号交换机
+	 		Ptr<SwitchNode> sw = DynamicCast<SwitchNode>(n.Get(i));
+	 		std::cout << "打印交换机37的流表信息：" << std::endl;
+			
+	 		// 打印流表详细信息
+	 		sw->PrintFlowTable(true);
+			
+	 		break; // 找到后退出循环
+	 	}
+	 }
+	/** Flow Table **/
+
 	Simulator::Destroy();
 	NS_LOG_INFO("Done.");
 	fclose(trace_output);

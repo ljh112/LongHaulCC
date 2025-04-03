@@ -10,6 +10,66 @@
 
 namespace ns3 {
 
+/** DCQCN **/
+struct Mlx {
+        DataRate m_rate;
+
+        DataRate m_targetRate;  //< Target rate
+        EventId m_eventUpdateAlpha;
+        double m_alpha;
+        bool m_alpha_cnp_arrived; // indicate if CNP arrived in the last slot
+        bool m_first_cnp; // indicate if the current CNP is the first CNP
+        EventId m_eventDecreaseRate;
+        bool m_decrease_cnp_arrived; // indicate if CNP arrived in the last slot
+        uint32_t m_rpTimeStage;
+        EventId m_rpTimer;
+};
+/** DCQCN **/
+
+/*
+struct FlowKey {
+        uint32_t sip;          // 源IP
+        uint32_t dip;          // 目的IP
+        uint16_t sport;        // 源端口
+        uint16_t dport;        // 目的端口
+        uint8_t protocol;      // 协议类型
+
+        // 用于哈希表的相等比较
+        bool operator==(const FlowKey &other) const {
+       		 return sip == other.sip && dip == other.dip &&
+                        sport == other.sport && dport == other.dport &&
+                        protocol == other.protocol;
+	}
+};
+
+        // 自定义哈希函数
+        struct FlowKeyHash {
+        std::size_t operator()(const FlowKey& k) const {
+                return std::hash<uint32_t>()(k.sip) ^
+                   std::hash<uint32_t>()(k.dip) ^
+                   std::hash<uint16_t>()(k.sport) ^
+                   std::hash<uint16_t>()(k.dport) ^
+                  std::hash<uint8_t>()(k.protocol);
+        }
+        };
+
+        // 每个流的队列统计信息
+        struct FlowQueueStats {
+                uint32_t queueBytes;       // 当前队列中的字节数
+                uint32_t queuePackets;     // 当前队列中的数据包数
+                uint32_t maxQueueBytes;    // 历史最大队列字节数
+        uint32_t maxQueuePackets;  // 历史最大队列包数
+                uint32_t outDev;           // 出口设备索引
+                uint32_t qIndex;           // 队列索引/优先级
+                uint64_t totalBytes;       // 累计字节数
+                uint64_t totalPackets;     // 累计数据包数
+                Time lastUpdateTime;       // 最后更新时间
+        };
+        // 流表类型定义
+        typedef std::unordered_map<FlowKey, FlowQueueStats, FlowKeyHash> FlowTable;
+
+*/
+
 class Packet;
 
 class SwitchNode : public Node{
@@ -71,7 +131,8 @@ public:
 	std::unordered_map<uint32_t, uint64_t> forward_table;
 	std::unordered_map<uint32_t, uint64_t> recv_table;
 	uint64_t iBDP;
-	std::unordered_map<uint64_t, uint64_t> through_table;
+	// std::unordered_map<uint64_t, uint64_t> through_table;
+	// std::unordered_map<FlowKey, uint64_t, FlowKeyHash> through_table2;
 
 	EventId rpTimer;
 	uint64_t counter;
@@ -80,6 +141,7 @@ public:
 	/** BiCC **/
 
 	/**	Flow Table **/
+
 	struct FlowKey {
 		uint32_t sip;          // 源IP
 		uint32_t dip;          // 目的IP
@@ -94,7 +156,7 @@ public:
 				   protocol == other.protocol;
 		}
 	};
-	
+
 	// 自定义哈希函数
 	struct FlowKeyHash {
     	std::size_t operator()(const FlowKey& k) const {
@@ -125,18 +187,21 @@ public:
 	FlowTable m_flowTable; 
 
 	// 从包和头部提取FlowKey
-    FlowKey ExtractFlowKey(CustomHeader &ch);
+
+    	FlowKey ExtractFlowKey(CustomHeader &ch);
+
 	void PrintFlowTable(bool detailed = false);
 
 	// 流表日志相关
 	bool m_flowTableLoggingEnabled;
-    uint32_t m_targetFlowTableSwitchId;
-    std::string m_flowTableLogFilename;
-    double m_flowTableLogInterval;
-    EventId m_flowTableLogEvent;
+
+	uint32_t m_targetFlowTableSwitchId;
+   	std::string m_flowTableLogFilename;
+    	double m_flowTableLogInterval;
+    	EventId m_flowTableLogEvent;
 
 	void LogFlowTablePeriodically();
-    void StartFlowTableLogging(uint32_t targetSwitchId, double intervalMs, std::string filename);
+   	void StartFlowTableLogging(uint32_t targetSwitchId, double intervalMs, std::string filename);
 	/**	Flow Table **/
 
 	/** Control Message **/
@@ -145,6 +210,61 @@ public:
 
 	void SendControlMessage(Ptr<Packet> p, uint32_t ifIndex);
 	/** Control Message **/
+
+
+	std::unordered_map<FlowKey, uint64_t, FlowKeyHash> through_table2;
+
+    	
+        /** DCQCN And RateLimiter **/
+        /******************************
+         * Mellanox's version of DCQCN
+         *****************************/
+        double m_g; //feedback weight
+        double m_rateOnFirstCNP; // the fraction of line rate to set on first CNP
+        bool m_EcnClampTgtRate;
+        double m_rpgTimeReset;
+        double m_rateDecreaseInterval;
+        uint32_t m_rpgThreshold;
+        double m_alpha_resume_interval;
+        DataRate m_rai;         //< Rate of additive increase
+        DataRate m_rhai;                //< Rate of hyper-additive increase
+
+        // the Mellanox's version of alpha update:
+        // every fixed time slot, update alpha.
+        void UpdateAlphaMlx(FlowKey key);
+        void ScheduleUpdateAlphaMlx(FlowKey key);
+
+        // Mellanox's version of CNP receive
+        void cnp_received_mlx(FlowKey key);
+
+        // Mellanox's version of rate decrease
+        // It checks every m_rateDecreaseInterval if CNP arrived (m_decrease_cnp_arrived).
+        // If so, decrease rate, and reset all rate increase related things
+        void CheckRateDecreaseMlx(FlowKey key);
+        void ScheduleDecreaseRateMlx(FlowKey key, uint32_t delta);
+
+        // Mellanox's version of rate increase
+        DataRate m_minRate;             //< Min sending rate
+        DataRate lineRate;
+        uint32_t slidingWin;
+        uint32_t initWin;
+        // std::unordered_map<uint64_t, Mlx> dcqMap;
+	std::unordered_map<FlowKey, Mlx, FlowKeyHash> dcqMap;
+
+        void RateIncEventTimerMlx(FlowKey key);
+        void RateIncEventMlx(FlowKey key);
+        void FastRecoveryMlx(FlowKey key);
+        void ActiveIncreaseMlx(FlowKey key);
+        void HyperIncreaseMlx(FlowKey key);
+
+        /******************************
+         * Token Bucket Rate Limiting
+         *****************************/
+//        std::unordered_map<uint64_t, uint64_t> tokenBuckets;
+   	std::unordered_map<FlowKey, uint64_t, FlowKeyHash> tokenBuckets;
+
+   	/** DCQCN And RateLimiter **/
+
 };
 
 } /* namespace ns3 */

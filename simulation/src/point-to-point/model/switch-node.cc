@@ -50,92 +50,95 @@ TypeId SwitchNode::GetTypeId (void)
 			UintegerValue(9000),
 			MakeUintegerAccessor(&SwitchNode::m_maxRtt),
 			MakeUintegerChecker<uint32_t>())
+	/** New Attribute **/
 	.AddAttribute("RPTimer",
-                        "The rate increase timer at RP in microseconds",
-                        DoubleValue(200),
-                        MakeDoubleAccessor(&SwitchNode::t1),
-                        MakeDoubleChecker<double>())
-        .AddAttribute("iBDP",
-                        "The BDP in the intra-datacenter for BiCC",
-                        DoubleValue(4000000000),
-                        MakeDoubleAccessor(&SwitchNode::iBDP),
-                        MakeDoubleChecker<uint64_t>())
+			"The rate increase timer at RP in microseconds",
+			DoubleValue(200),
+			MakeDoubleAccessor(&SwitchNode::t1),
+			MakeDoubleChecker<double>())
+	.AddAttribute("iBDP",
+			"The BDP in the intra-datacenter for BiCC",
+			DoubleValue(4000000000),
+			MakeDoubleAccessor(&SwitchNode::iBDP),
+			MakeDoubleChecker<uint64_t>())
 	.AddAttribute("TimeReset",
 			"The  reset timer at RP in microseconds",
 			DoubleValue(20.0),
 			MakeDoubleAccessor(&SwitchNode::TimeReset),
 			MakeDoubleChecker<double>())
-        .AddAttribute("maxBW",
-                        "The capacity of bandwitch on DCI switch for BiCC (Gbps)",
-                        DoubleValue(200),
-                        MakeDoubleAccessor(&SwitchNode::maxBW),
-                        MakeDoubleChecker<uint64_t>())
-                .AddAttribute("EwmaGain",
-                                "Control gain parameter which determines the level of rate decrease",
-                                DoubleValue(1.0 / 16),
-                                MakeDoubleAccessor(&SwitchNode::m_g),
-                                MakeDoubleChecker<double>())
-                .AddAttribute ("RateOnFirstCnp",
-                                "the fraction of rate on first CNP",
-                                DoubleValue(1.0),
-                                MakeDoubleAccessor(&SwitchNode::m_rateOnFirstCNP),
-                                MakeDoubleChecker<double> ())
-                .AddAttribute("ClampTargetRate",
-                                "Clamp target rate.",
-                                BooleanValue(false),
-                                MakeBooleanAccessor(&SwitchNode::m_EcnClampTgtRate),
-                                MakeBooleanChecker())
-                .AddAttribute("RPTimerMlx",
-                                "The rate increase timer at RP in microseconds",
-                                DoubleValue(1500.0),
-                                MakeDoubleAccessor(&SwitchNode::m_rpgTimeReset),
-                                MakeDoubleChecker<double>())
-                .AddAttribute("RateDecreaseInterval",
-                                "The interval of rate decrease check",
-                                DoubleValue(4.0),
-                                MakeDoubleAccessor(&SwitchNode::m_rateDecreaseInterval),
-                                MakeDoubleChecker<double>())
-                .AddAttribute("FastRecoveryTimes",
-                                "The rate increase timer at RP",
-                                UintegerValue(5),
-                                MakeUintegerAccessor(&SwitchNode::m_rpgThreshold),
-                                MakeUintegerChecker<uint32_t>())
-                .AddAttribute("AlphaResumInterval",
-                                "The interval of resuming alpha",
-                                DoubleValue(55.0),
-                                MakeDoubleAccessor(&SwitchNode::m_alpha_resume_interval),
-                                MakeDoubleChecker<double>())
-                .AddAttribute("RateAI",
-                                "Rate increment unit in AI period",
-                                DataRateValue(DataRate("5Mb/s")),
-                                MakeDataRateAccessor(&SwitchNode::m_rai),
-                                MakeDataRateChecker())
-                .AddAttribute("RateHAI",
-                                "Rate increment unit in hyperactive AI period",
-                                DataRateValue(DataRate("50Mb/s")),
-                                MakeDataRateAccessor(&SwitchNode::m_rhai),
-                                MakeDataRateChecker())
-                .AddAttribute("MinRate",
-                                "Minimum rate of a throttled flow",
-                                DataRateValue(DataRate("100Mb/s")),
-                                MakeDataRateAccessor(&SwitchNode::m_minRate),
-                                MakeDataRateChecker())
-                .AddAttribute("lineRate",
-                                "Maximum rate of link",
-                                DataRateValue(DataRate("100Gb/s")),
-                                MakeDataRateAccessor(&SwitchNode::lineRate),
-                                MakeDataRateChecker())
-                .AddAttribute("slidingWin",
-                                "The size of sliding windows for Smooth Start of DCQCN",
-                                UintegerValue(0),
-                                MakeUintegerAccessor(&SwitchNode::initWin),
-                                MakeUintegerChecker<uint32_t>())
-                .AddAttribute("initWin",
-                                "The initial number of tokens",
-                                UintegerValue(1000),
-                                MakeUintegerAccessor(&SwitchNode::initWin),
-                                MakeUintegerChecker<uint32_t>())			
+	.AddAttribute("maxBW",
+			"The capacity of bandwitch on DCI switch for BiCC (Gbps)",
+			DoubleValue(200),
+			MakeDoubleAccessor(&SwitchNode::maxBW),
+			MakeDoubleChecker<uint64_t>())
+	.AddAttribute("EwmaGain",
+			"Control gain parameter which determines the level of rate decrease",
+			DoubleValue(1.0 / 16),
+			MakeDoubleAccessor(&SwitchNode::m_g),
+			MakeDoubleChecker<double>())
+	.AddAttribute ("RateOnFirstCnp",
+			"the fraction of rate on first CNP",
+			DoubleValue(1.0),
+			MakeDoubleAccessor(&SwitchNode::m_rateOnFirstCNP),
+			MakeDoubleChecker<double> ())
+	.AddAttribute("ClampTargetRate",
+			"Clamp target rate.",
+			BooleanValue(false),
+			MakeBooleanAccessor(&SwitchNode::m_EcnClampTgtRate),
+			MakeBooleanChecker())
+	.AddAttribute("RPTimerMlx",
+			"The rate increase timer at RP in microseconds",
+			DoubleValue(1500.0),
+			MakeDoubleAccessor(&SwitchNode::m_rpgTimeReset),
+			MakeDoubleChecker<double>())
+	.AddAttribute("RateDecreaseInterval",
+			"The interval of rate decrease check",
+			DoubleValue(4.0),
+			MakeDoubleAccessor(&SwitchNode::m_rateDecreaseInterval),
+			MakeDoubleChecker<double>())
+	.AddAttribute("FastRecoveryTimes",
+			"The rate increase timer at RP",
+			UintegerValue(5),
+			MakeUintegerAccessor(&SwitchNode::m_rpgThreshold),
+			MakeUintegerChecker<uint32_t>())
+	.AddAttribute("AlphaResumInterval",
+			"The interval of resuming alpha",
+			DoubleValue(55.0),
+			MakeDoubleAccessor(&SwitchNode::m_alpha_resume_interval),
+			MakeDoubleChecker<double>())
+	.AddAttribute("RateAI",
+			"Rate increment unit in AI period",
+			DataRateValue(DataRate("5Mb/s")),
+			MakeDataRateAccessor(&SwitchNode::m_rai),
+			MakeDataRateChecker())
+	.AddAttribute("RateHAI",
+			"Rate increment unit in hyperactive AI period",
+			DataRateValue(DataRate("50Mb/s")),
+			MakeDataRateAccessor(&SwitchNode::m_rhai),
+			MakeDataRateChecker())
+	.AddAttribute("MinRate",
+			"Minimum rate of a throttled flow",
+			DataRateValue(DataRate("100Mb/s")),
+			MakeDataRateAccessor(&SwitchNode::m_minRate),
+			MakeDataRateChecker())
+	.AddAttribute("lineRate",
+			"Maximum rate of link",
+			DataRateValue(DataRate("100Gb/s")),
+			MakeDataRateAccessor(&SwitchNode::lineRate),
+			MakeDataRateChecker())
+	.AddAttribute("slidingWin",
+			"The size of sliding windows for Smooth Start of DCQCN",
+			UintegerValue(0),
+			MakeUintegerAccessor(&SwitchNode::initWin),
+			MakeUintegerChecker<uint32_t>())
+	.AddAttribute("initWin",
+			"The initial number of tokens",
+			UintegerValue(1000),
+			MakeUintegerAccessor(&SwitchNode::initWin),
+			MakeUintegerChecker<uint32_t>())			
+  /** New Attribute **/
   ;
+  
   return tid;
 }
 
@@ -154,10 +157,10 @@ SwitchNode::SwitchNode(){
 	for (uint32_t i = 0; i < pCnt; i++)
 		m_u[i] = 0;
 
-	// BICC
-//	isSendDCI = false;
-//	isRecvDCI = false;
-	// BICC
+	/** BICC **/
+	// isSendDCI = false;
+	// isRecvDCI = false;
+	/** BICC **/
 	
 	forward_table.clear();
 	recv_table.clear();
@@ -171,10 +174,10 @@ SwitchNode::SwitchNode(){
 	/** BICC **/
 
 
-        /** DCQCN **/
-        dcqMap.clear();
-        tokenBuckets.clear();
-        /** DCQCN **/
+	/** DCQCN **/
+	dcqMap.clear();
+	tokenBuckets.clear();
+	/** DCQCN **/
 
 	/** Flow Table Logging **/
 	/** 初始化 **/
@@ -183,6 +186,10 @@ SwitchNode::SwitchNode(){
 	m_flowTableLogInterval = 1000000.0; // 默认1秒
 	m_flowTableLogFilename = "switch_flow_table.log";
 	/** Flow Table Logging **/
+
+	/** Control Message **/
+	DCI_CM_test = true;
+	/** Control Message **/
 }
 
 
@@ -391,6 +398,54 @@ void SwitchNode::CheckAndSendResume(uint32_t inDev, uint32_t qIndex){
 	}
 }
 
+
+/** Control Message **/
+void SwitchNode::SendControlMessage(Ptr<Packet> p, uint32_t ifIndex){
+	 // 解析原始数据包头部
+	 CustomHeader ch(CustomHeader::L2_Header | CustomHeader::L3_Header | CustomHeader::L4_Header);
+	 ch.getInt = 1; // 解析INT头部
+	 p->PeekHeader(ch);
+
+	// 创建控制消息包
+    Ptr<Packet> cmPacket = Create<Packet>(0);
+
+	// 创建新的自定义头部
+    CustomHeader cmHeader;
+    cmHeader.headerType = CustomHeader::L2_Header | CustomHeader::L3_Header | CustomHeader::L4_Header;
+
+	// 设置控制消息头部内容
+    cmHeader.DCI_CM_header.test = 123;  // 设置测试字段
+
+	/** IPV4_H **/	
+	// 交换源目的IP地址
+    cmHeader.sip = ch.dip;
+    cmHeader.dip = ch.sip;
+
+	// 设置为DCI控制消息类型
+    cmHeader.l3Prot = DCI_CM;  // 0xFA
+
+	// 设置IPv4头部其他字段
+    cmHeader.m_ttl = 64;
+    cmHeader.ipv4Flags = 0;
+    cmHeader.m_payloadSize = 0;  // 没有payload
+	/** IPV4_H **/
+
+	// PPP协议号
+	cmHeader.pppProto = 0x0021;  
+
+	// 准备发送
+	cmPacket->AddHeader(cmHeader);
+    cmPacket->AddPacketTag(FlowIdTag(ifIndex));
+
+	// 发送控制消息
+	int idx = GetOutDev(cmPacket, cmHeader);
+	std::cout << idx << "test " << std::endl;
+	m_devices[idx]->SwitchSend(0, cmPacket, cmHeader);
+
+}
+/** Control Message **/
+
+
 void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 	/**	Flow Table**/
 	/** 包到达处对对应流表项更新 **/
@@ -428,16 +483,27 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 	}
 	/**	Flow Table**/
 
+	/** Control Message **/
+	// 经测试可以在 0 号 DCI 交换机上收到控制报文
+	if (ch.l3Prot ==0xFA){
+		std::cout << "Switch" <<GetId() << std::endl;
+		std::cout << "DCI CM" << (int)ch.DCI_CM_header.test<<std::endl;
+		return; // Drop
+	}
+	/** Control Message **/
+
 	int idx = GetOutDev(p, ch);
-//	std::cout << "*****" << std::endl;
-//	counter += p->GetSize();
+
+	/** Through Table **/
+	// std::cout << "*****" << std::endl;
+	// counter += p->GetSize();
 	
-//	std::cout << ch.sip << std::endl;
-//	through_table[ch.sip] += p->GetSize();
-//	std::cout << ch.sip  << std::endl;
-        if (ch.l3Prot == 0x11 || ch.l3Prot == 0x6){
-//              std::cout << ch.l3Prot << " "  << ch.sip << std::endl;
-                // through_table[ch.sip] += p->GetSize();
+	// std::cout << ch.sip << std::endl;
+	// through_table[ch.sip] += p->GetSize();
+	// std::cout << ch.sip  << std::endl;
+    if (ch.l3Prot == 0x11 || ch.l3Prot == 0x6){
+        // std::cout << ch.l3Prot << " "  << ch.sip << std::endl;
+        // through_table[ch.sip] += p->GetSize();
 		// uint64_t flowId = ((uint64_t)ch.sip << 32) | ((uint64_t)ch.udp.pg << 16) | (uint64_t)ch.udp.sport;
 		FlowKey key= ExtractFlowKey(ch);
 		
@@ -446,16 +512,16 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 		through_table2[key] += p->GetSize();
         }
 	else if(ch.l3Prot == 0xFC || ch.l3Prot == 0xFD){ // || ch.l3Prot == 0xFF || ch.l3Prot == 0xFE
-//              std::cout << ch.l3Prot << " "  << ch.dip << std::endl;
-                // through_table[ch.dip] += p->GetSize();
-                // uint64_t flowId = ((uint64_t)ch.dip << 32) | ((uint64_t)ch.ack.pg << 16) | (uint64_t)ch.ack.dport;
-                FlowKey key= ExtractFlowKey(ch);
+    	// std::cout << ch.l3Prot << " "  << ch.dip << std::endl;
+        // through_table[ch.dip] += p->GetSize();
+        // uint64_t flowId = ((uint64_t)ch.dip << 32) | ((uint64_t)ch.ack.pg << 16) | (uint64_t)ch.ack.dport;
+        FlowKey key= ExtractFlowKey(ch);
 		
 		// std::cout << key << std::endl;
-                // through_table[flowId] += p->GetSize();
+        // through_table[flowId] += p->GetSize();
 		through_table2[key] += p->GetSize();
-        }
-
+    }
+	/** Through Table **/
 
 
 	if (idx >= 0){
@@ -480,7 +546,7 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 			}else{
 				return; // Drop
 			}
-
+			/** TEST **/
 			/** test **
 			if(m_mmu->buffer_size > 15000000 && (false == m_mmu->paused[inDev][qIndex]) 
 					&& (m_mmu->GetSharedUsed(inDev, qIndex) > 0)){
@@ -554,29 +620,43 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 			}
 			*/
 		
-/*
+		/*
 			if(m_mmu->buffer_size > 15000000 && m_mmu->GetSharedUsed(inDev, qIndex)>0)
 				std::cout <<  inDev << " " << qIndex << " " << m_mmu->GetSharedUsed(inDev, qIndex) << std::endl;
-*/			
+		*/		
+		/** TEST **/	
 			CheckAndSendPfc(inDev, qIndex);
 		}
 
 		/* BICC */
 		uint8_t ecnbits = ch.GetIpv4EcnBits();
-                bool egressCongested = m_ecnEnabled && m_mmu->ShouldSendCN(idx, qIndex);
-                if(9 == m_ccMode && 0 == m_mmu->node_id && ch.l3Prot == 0x11 && (egressCongested || ecnbits)){
+        bool egressCongested = m_ecnEnabled && m_mmu->ShouldSendCN(idx, qIndex);
+        if(9 == m_ccMode && 0 == m_mmu->node_id && ch.l3Prot == 0x11 && (egressCongested || ecnbits)){
 			sendCNPByDCI(p, idx);
 
 			PppHeader ppp;
-                        Ipv4Header h;
-                        p->RemoveHeader(ppp);
-                        p->RemoveHeader(h);
-                        h.SetEcn((Ipv4Header::EcnType)0x00);
-                        p->AddHeader(h);
-                        p->AddHeader(ppp);
+            Ipv4Header h;
+            p->RemoveHeader(ppp);
+            p->RemoveHeader(h);
+            h.SetEcn((Ipv4Header::EcnType)0x00);
+            p->AddHeader(h);
+            p->AddHeader(ppp);
 		}
 		/* BICC */
-/*
+
+		/** Control Message **/
+		// 先测试报文构造可行性
+		if (DCI_CM_test && m_mmu->node_id == 37)
+		{
+			FlowKey key= ExtractFlowKey(ch);
+			SendControlMessage(p,idx);
+			DCI_CM_test = false;
+			std::cout << "DCI CM" << std::endl;
+		}
+		/** Control Message **/
+
+		/* BICC */
+		/*
 		if(1 == m_mmu->node_id && ch.l3Prot == 0x11 && ecnbits){
 			PppHeader ppp;
 			Ipv4Header h;
@@ -588,14 +668,16 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 
 			// std::cout << "111111111111" << std::endl;
 		}
-*/
+		*/
 		/* BICC */
 
 		m_bytes[inDev][idx][qIndex] += p->GetSize();
 
+		/** TEST **/
 		// counter += p->GetSize();		
-//		m_devices[idx]->SwitchSend(qIndex, p, ch);
-		
+		// m_devices[idx]->SwitchSend(qIndex, p, ch);
+		/** TEST **/
+
 		/** BiCC third loop **/
 		Ptr<QbbNetDevice> dev = DynamicCast<QbbNetDevice>(m_devices[idx]);
 		uint32_t fip = ch.dip;
@@ -604,113 +686,122 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 		if(9 == m_ccMode && 37 == m_mmu->node_id && ch.l3Prot == 0x11){
 			/** Remove ECN Signnal **/
 			PppHeader ppp;
-                        Ipv4Header h;
-                        p->RemoveHeader(ppp);
-                        p->RemoveHeader(h);
-                        h.SetEcn((Ipv4Header::EcnType)0x00);
-                        p->AddHeader(h);
-                        p->AddHeader(ppp);
+            Ipv4Header h;
+            p->RemoveHeader(ppp);
+            p->RemoveHeader(h);
+            h.SetEcn((Ipv4Header::EcnType)0x00);
+            p->AddHeader(h);
+            p->AddHeader(ppp);
 			/** Remove ECN Signnal **/
 
-                        /** token Rate Limiting **/
-                        // uint64_t flowId = ((uint64_t)ch.sip << 32) | ((uint64_t)ch.udp.pg << 16) | (uint64_t)ch.udp.sport;
-                       	FlowKey flowId = ExtractFlowKey(ch); 
+            /** token Rate Limiting **/
+            // uint64_t flowId = ((uint64_t)ch.sip << 32) | ((uint64_t)ch.udp.pg << 16) | (uint64_t)ch.udp.sport;
+            FlowKey flowId = ExtractFlowKey(ch); 
 			
-			if(tokenBuckets.find(flowId) != tokenBuckets.end())
-                        {
-                                if(tokenBuckets[flowId] >= p->GetSize()){
-                                        tokenBuckets[flowId] -= p->GetSize();
-                                }else{
+			if(tokenBuckets.find(flowId) != tokenBuckets.end()){
+                if(tokenBuckets[flowId] >= p->GetSize()){
+                    tokenBuckets[flowId] -= p->GetSize();
+                }else{
+					 std::cout << tokenBuckets[flowId] << " ******1******"  << std::endl;
+ 					/*
+                    for(auto kv : dcqMap){
+                        std::cout << kv.first << "   " << kv.second.m_targetRate << "  " << kv.second.m_rate  << std::endl;
+                    }
+					*/
+                    isSend = false;
+                }
+            }
+        	/** token Rate Limiting **/
 
-                                        std::cout << tokenBuckets[flowId] << " ******1******"  << std::endl;
- /*
-                                        for(auto kv : dcqMap){
-                                              std::cout << kv.first << "   " << kv.second.m_targetRate << "  " << kv.second.m_rate  << std::endl;
-                                        }
-*/
-                                        isSend = false;
-                                }
-                        }
-                        /** token Rate Limiting **/
+            if(forward_table.find(fip)!=forward_table.end()
+                && recv_table.find(fip)!=recv_table.end()
+                && forward_table[fip]>iBDP){
+            	// std::cout << recv_table[fip] << " ******1******" << std::endl;
 
-                        if(forward_table.find(fip)!=forward_table.end()
-                                        && recv_table.find(fip)!=recv_table.end()
-                                        && forward_table[fip]>iBDP){
-//                               std::cout << recv_table[fip] << " ******1******" << std::endl;
-
-                                isSend = false;
-                        }else{
-                                forward_table[fip] += p->GetSize();
-                        }
+                isSend = false;
+            }else{
+                forward_table[fip] += p->GetSize();
+            }
 
 
-/*
+			/*
 			if(forward_table.find(fip)!=forward_table.end() 
 					&& recv_table.find(fip)!=recv_table.end()
 				      	&& forward_table[fip]>iBDP){
-//				 std::cout << recv_table[fip] << " ******1******" << std::endl;
+				//  std::cout << recv_table[fip] << " ******1******" << std::endl;
 				return;
 			}
 
 			forward_table[fip] += p->GetSize();
-//			std::cout << bi_table[fip] << " ******1******" << std::endl;
-*/
-	}	
-	
-		if(9 == m_ccMode && 37 == m_mmu->node_id && ch.l3Prot == 0xFC){
-//			std::cout << ch.udp.ih.recvBiCCBytes << " ******1******" << std::endl;
-//			uint32_t aSip = ch.sip;
-			recv_table[ch.sip] = ch.ack.ih.recvBiCCBytes;			
-//			if(bi_table[aSip] < ch.udp.ih.recvBiCCBytes)
-//			std::cout << forward_table[aSip]  << " ******2******" << recv_table[aSip]  << std::endl;
-//			if(bi_table.find(fip) != bi_table.end()){
-//				bi_table[fip] -= ch.udp.ih.recvBiCCBytes;
-//				std::cout << bi_table[fip] << std::endl;
-//				
-//				if(bi_table[fip] <= 0){
-//					bi_table.erase(fip);
-//				}
-//			}
-//			ch.udp.ih.recvBiCCBytes = 1;
-//			std::cout << ch.udp.ih.isLongLoop << " ******2******" << std::endl;	
-			
-                        /** testDCQCN **/
-                        // uint64_t flowId = ((uint64_t)ch.dip << 32) | ((uint64_t)ch.ack.pg << 16) | (uint64_t)ch.ack.dport;
-			FlowKey flowId = ExtractFlowKey(ch);
-
-                        if(dcqMap.find(flowId) == dcqMap.end()){
-                                Mlx mlx;
-                                mlx.m_first_cnp = true;
-                                mlx.m_rate = lineRate;
-                                mlx.m_targetRate = lineRate;
-
-                                dcqMap[flowId] =  mlx;
-                        }
-
-                        // uint8_t cnp = (ch.ack.flags >> qbbHeader::FLAG_CNP) & 1;
-
-                        if(ch.ack.flags == 1){
-                                // std::cout << ch.ack.flags << std::endl;
-                                // uint64_t flowId = ((uint64_t)ch.dip << 32) | ((uint64_t)ch.ack.pg << 16) | (uint64_t)ch.ack.dport;
-                                if(0 == slidingWin){
-                                        cnp_received_mlx(flowId);
-                                        slidingWin = initWin;
-                                }else{
-                                        slidingWin -= 1;
-                                }
-                        }
-                        /** testDCQCN **/
+			// std::cout << bi_table[fip] << " ******1******" << std::endl;
+			*/
 		}
 
+		if (9 == m_ccMode && 37 == m_mmu->node_id && ch.l3Prot == 0xFC)
+		{
+			// std::cout << ch.udp.ih.recvBiCCBytes << " ******1******" << std::endl;
+			// uint32_t aSip = ch.sip;
+			recv_table[ch.sip] = ch.ack.ih.recvBiCCBytes;
+			// if(bi_table[aSip] < ch.udp.ih.recvBiCCBytes)
+			// std::cout << forward_table[aSip]  << " ******2******" << recv_table[aSip]  << std::endl;
+			// if(bi_table.find(fip) != bi_table.end()){
+			// 	bi_table[fip] -= ch.udp.ih.recvBiCCBytes;
+			// 	std::cout << bi_table[fip] << std::endl;
+
+			// 	if(bi_table[fip] <= 0){
+			// 		bi_table.erase(fip);
+			// 	}
+			// }
+			// ch.udp.ih.recvBiCCBytes = 1;
+			// std::cout << ch.udp.ih.isLongLoop << " ******2******" << std::endl;
+
+			/** testDCQCN **/
+			// uint64_t flowId = ((uint64_t)ch.dip << 32) | ((uint64_t)ch.ack.pg << 16) | (uint64_t)ch.ack.dport;
+			FlowKey flowId = ExtractFlowKey(ch);
+			if (dcqMap.find(flowId) == dcqMap.end())
+			{
+				Mlx mlx;
+				mlx.m_first_cnp = true;
+				mlx.m_rate = lineRate;
+				mlx.m_targetRate = lineRate;
+
+				dcqMap[flowId] = mlx;
+			}
+
+			// uint8_t cnp = (ch.ack.flags >> qbbHeader::FLAG_CNP) & 1;
+
+			if (ch.ack.flags == 1)
+			{
+				// std::cout << ch.ack.flags << std::endl;
+				// uint64_t flowId = ((uint64_t)ch.dip << 32) | ((uint64_t)ch.ack.pg << 16) | (uint64_t)ch.ack.dport;
+				if (0 == slidingWin)
+				{
+					cnp_received_mlx(flowId);
+					slidingWin = initWin;
+				}
+				else
+				{
+					slidingWin -= 1;
+				}
+			}
+			/** testDCQCN **/
+		}
 		/** BiCC third loop **/	
 
-                if(isSend){
-                        m_devices[idx]->SwitchSend(qIndex, p, ch);
-                }
+		/** New Send **/
+		// 通过 isSend 标记确认是否需要发送
+        if(isSend){
+             m_devices[idx]->SwitchSend(qIndex, p, ch);
+        }
+		/** New Send **/
 
-//		m_devices[idx]->SwitchSend(qIndex, p, ch);
+		/** Original Send **/
+		// m_devices[idx]->SwitchSend(qIndex, p, ch);
+		/** Original Send **/
 
-	//	std::cout << dev->GetDataRate().GetBitRate() << std::endl;
+		/** TEST **/
+		// std::cout << dev->GetDataRate().GetBitRate() << std::endl;
+		/** TEST **/
 	}else
 		return; // Drop
 }
@@ -815,41 +906,41 @@ bool SwitchNode::SwitchReceiveFromDevice(Ptr<NetDevice> device, Ptr<Packet> pack
 }
 
 void SwitchNode::SwitchNotifyDequeue(uint32_t ifIndex, uint32_t qIndex, Ptr<Packet> p){
-//	std::cout << "*****" << std::endl;
-
 	FlowIdTag t;
 	p->PeekPacketTag(t);
-	counter += p->GetSize(); // test
-///        through_table[ch.sip] += p->GetSize();	
-//	uint32_t sip = 0x0b000001 + ((m_id / 256) * 0x00010000) + ((m_id % 256) * 0x00000100);
+	counter += p->GetSize(); 
+	
+	/** Through Table **/
+	// through_table[ch.sip] += p->GetSize();	
+	// uint32_t sip = 0x0b000001 + ((m_id / 256) * 0x00010000) + ((m_id % 256) * 0x00000100);
 	CustomHeader ch(CustomHeader::L2_Header | CustomHeader::L3_Header | CustomHeader::L4_Header);
-        ch.getInt = 1; // parse INT header
-        p->PeekHeader(ch);
-//	through_table[ch.sip] += p->GetSize();
+    ch.getInt = 1; // parse INT header
+    p->PeekHeader(ch);
+	// through_table[ch.sip] += p->GetSize();
 	
 	if (ch.l3Prot == 0x11 || ch.l3Prot == 0x6){
-//		std::cout << ch.l3Prot << " "  << ch.sip << std::endl;	
-//		through_table[ch.sip] += p->GetSize();
+		// std::cout << ch.l3Prot << " "  << ch.sip << std::endl;	
+		// through_table[ch.sip] += p->GetSize();
 		// uint64_t flowId = ((uint64_t)ch.sip << 32) | ((uint64_t)ch.udp.pg << 16) | (uint64_t)ch.udp.sport;
-                FlowKey key= ExtractFlowKey(ch);
+        FlowKey key= ExtractFlowKey(ch);
 
-                // std::cout << key << std::endl;
-                // through_table[flowId] += p->GetSize();
-                through_table2[key] += p->GetSize();		
+    	// std::cout << key << std::endl;
+    	// through_table[flowId] += p->GetSize();
+    	through_table2[key] += p->GetSize();		
 		// through_table[flowId] += p->GetSize();
 	}
 	else if(ch.l3Prot == 0xFC || ch.l3Prot == 0xFD){ // || ch.l3Prot == 0xFF || ch.l3Prot == 0xFE
-//		std::cout << ch.l3Prot << " "  << ch.dip << std::endl;
-//		through_table[ch.dip] += p->GetSize();
-                // uint64_t flowId = ((uint64_t)ch.dip << 32) | ((uint64_t)ch.ack.pg << 16) | (uint64_t)ch.ack.dport;
-                // through_table[flowId] += p->GetSize();
-                FlowKey key= ExtractFlowKey(ch);
+		// std::cout << ch.l3Prot << " "  << ch.dip << std::endl;
+		// through_table[ch.dip] += p->GetSize();
+    	// uint64_t flowId = ((uint64_t)ch.dip << 32) | ((uint64_t)ch.ack.pg << 16) | (uint64_t)ch.ack.dport;
+    	// through_table[flowId] += p->GetSize();
+        FlowKey key= ExtractFlowKey(ch);
 
-                // std::cout << key << std::endl;
-                // through_table[flowId] += p->GetSize();
-                through_table2[key] += p->GetSize();
-
+        // std::cout << key << std::endl;
+        // through_table[flowId] += p->GetSize();
+        through_table2[key] += p->GetSize();
 	}
+	/** Through Table **/
 
 	/** Flow Table **/
 	/** 包发送后对对应流表项更新 **/
@@ -876,7 +967,9 @@ void SwitchNode::SwitchNotifyDequeue(uint32_t ifIndex, uint32_t qIndex, Ptr<Pack
 		m_bytes[inDev][ifIndex][qIndex] -= p->GetSize();
 		if (m_ecnEnabled){
 			bool egressCongested = m_mmu->ShouldSendCN(ifIndex, qIndex);
+			/** TEST **/
 			//std::cout << "22222222222" << std::endl;
+			/** TEST **/
 
 			if (egressCongested){
 				PppHeader ppp;
@@ -888,23 +981,20 @@ void SwitchNode::SwitchNotifyDequeue(uint32_t ifIndex, uint32_t qIndex, Ptr<Pack
 				p->AddHeader(ppp);
 
 				/** BICC **/
-//				std::cout << m_mmu->node_id << std::endl;
-//				if(0 == m_mmu->node_id){
-//					
-//				}
-
+				// std::cout << m_mmu->node_id << std::endl;
+				// if(0 == m_mmu->node_id){
+					// 
+				// }
 				/** BICC **/
 			}
-		}
-		//CheckAndSendPfc(inDev, qIndex);
-                
-		/** test **/
+		}       
+		/** TEST **/
 		/*
 		if(m_mmu->buffer_size > 15000000 && m_mmu->paused[inDev][qIndex]){
 			std::cout << inDev << " " << qIndex << " "  << m_mmu->GetSharedUsed(inDev, qIndex) << " " << m_mmu->pfc_remote * 0.01 << std::endl;
 		}
 		*/
-/*                
+		/*                
 		if(m_mmu->buffer_size > 15000000 && (true == m_mmu->paused[inDev][qIndex])
                                 && m_mmu->GetSharedUsed(inDev, qIndex) < m_mmu->pfc_remote){
 			Ptr<QbbNetDevice> device = DynamicCast<QbbNetDevice>(m_devices[inDev]);
@@ -917,14 +1007,14 @@ void SwitchNode::SwitchNotifyDequeue(uint32_t ifIndex, uint32_t qIndex, Ptr<Pack
                        // std::cout << "Resume:  " << inDev << " " << qIndex << " " 
 			//	<< m_mmu->GetSharedUsed(inDev, qIndex) << std::endl;
                 }
-*/
+		*/
                 /** test  1047754 **/
 		/*
 		if(m_mmu->buffer_size > 15000000 && true == m_mmu->paused[inDev][qIndex] 
 				&& m_mmu->GetSharedUsed(inDev, qIndex) <= 104775){
 
-//			if(lastBytes>0 && lastBytes>m_mmu->GetSharedUsed(inDev, qIndex)){
-//				std::cout << inDev << " " << qIndex << " "  << m_mmu->paused[inDev][qIndex] << " " << m_mmu->GetSharedUsed(inDev, qIndex) << " " << m_mmu->hdrm_bytes[inDev][qIndex] << std::endl;
+			// if(lastBytes>0 && lastBytes>m_mmu->GetSharedUsed(inDev, qIndex)){
+				// std::cout << inDev << " " << qIndex << " "  << m_mmu->paused[inDev][qIndex] << " " << m_mmu->GetSharedUsed(inDev, qIndex) << " " << m_mmu->hdrm_bytes[inDev][qIndex] << std::endl;
                                 Ptr<QbbNetDevice> device = DynamicCast<QbbNetDevice>(m_devices[inDev]);
                                 
 				if(true == m_mmu->paused[inDev][qIndex]){
@@ -932,11 +1022,13 @@ void SwitchNode::SwitchNotifyDequeue(uint32_t ifIndex, uint32_t qIndex, Ptr<Pack
 				}
 
 				m_mmu->SetResume(inDev, qIndex);
-//			}
+			// }
 			
-//			lastBytes = m_mmu->GetSharedUsed(inDev, qIndex);
+			// lastBytes = m_mmu->GetSharedUsed(inDev, qIndex);
 		}
-		*/	
+		*/
+		/** TEST **/	
+		//CheckAndSendPfc(inDev, qIndex);
 		CheckAndSendResume(inDev, qIndex);
 	}
 	if (1){
@@ -1187,8 +1279,10 @@ void SwitchNode::LogFlowTablePeriodically() {
 /**	Flow Table Logging**/
 
 
+/** Swtich Node DCQCN **/
 #define PRINT_LOG 0
 /******************************
+ * 
  * Mellanox's version of DCQCN
  *****************************/
 
@@ -1380,5 +1474,6 @@ void SwitchNode::HyperIncreaseMlx(FlowKey key){
 
 //      dcqMap[key] = mlx;
 }
+/** Swtich Node DCQCN **/
 
 } /* namespace ns3 */

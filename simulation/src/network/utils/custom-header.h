@@ -21,6 +21,10 @@
 #ifndef CUSTOM_HEADER_H
 #define CUSTOM_HEADER_H
 
+/** Control Message **/
+#define DCI_CM 0xFA
+/** Control Message **/
+
 #include "ns3/header.h"
 #include "ns3/int-header.h"
 
@@ -135,6 +139,12 @@ public:
 		  uint16_t qIndex;
         	  uint16_t dport;
       	  } bicc;
+    /** Control Message **/
+    struct 
+    {
+      uint8_t test;
+    }DCI_CM_header;
+    /** Control Message **/
   };
 
   uint8_t GetIpv4EcnBits (void) const;

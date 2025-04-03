@@ -102,6 +102,10 @@ uint32_t CustomHeader::GetSerializedSize (void) const{
 			len += 9;
 		else if (l3Prot == 0xFB)
                         len += 4;
+		/** Control Message **/
+		else if (l3Prot == 0xFA)
+			len+= 1;
+		/** Control Message **/
 	}
 	return len;
 }
@@ -187,6 +191,11 @@ void CustomHeader::Serialize (Buffer::Iterator start) const{
 		  i.WriteU16 (bicc.qIndex);
                   i.WriteU16 (bicc.dport);
           }
+	  /** Control Message **/
+	  else if (l3Prot == 0xFA){
+		  i.WriteU8(DCI_CM_header.test);
+	  }
+	  /** Control Message **/
   }
 }
 
@@ -338,6 +347,12 @@ CustomHeader::Deserialize (Buffer::Iterator start)
 		  bicc.dport = i.ReadU16();
 		  l4Size = 4;
 	  }
+	  /** Control Message **/
+	  else if (l3Prot == 0xFA){
+		  DCI_CM_header.test = i.ReadU8();
+		  l4Size = 1;
+	  }
+	  /** Control Message **/
 //	  
   }
 

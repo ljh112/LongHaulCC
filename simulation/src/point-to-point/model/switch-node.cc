@@ -112,6 +112,10 @@ SwitchNode::SwitchNode(){
 	m_flowTableLogInterval = 1000000.0; // 默认1秒
 	m_flowTableLogFilename = "switch_flow_table.log";
 	/** Flow Table Logging **/
+
+	/** Control Message **/
+	DCI_CM_test = true;
+	/** Control Message **/
 }
 
 
@@ -297,6 +301,54 @@ void SwitchNode::CheckAndSendResume(uint32_t inDev, uint32_t qIndex){
 	}
 }
 
+
+/** Control Message **/
+void SwitchNode::SendControlMessage(Ptr<Packet> p, uint32_t ifIndex){
+	 // 解析原始数据包头部
+	 CustomHeader ch(CustomHeader::L2_Header | CustomHeader::L3_Header | CustomHeader::L4_Header);
+	 ch.getInt = 1; // 解析INT头部
+	 p->PeekHeader(ch);
+
+	// 创建控制消息包
+    Ptr<Packet> cmPacket = Create<Packet>(0);
+
+	// 创建新的自定义头部
+    CustomHeader cmHeader;
+    cmHeader.headerType = CustomHeader::L2_Header | CustomHeader::L3_Header | CustomHeader::L4_Header;
+
+	// 设置控制消息头部内容
+    cmHeader.DCI_CM_header.test = 123;  // 设置测试字段
+
+	/** IPV4_H **/	
+	// 交换源目的IP地址
+    cmHeader.sip = ch.dip;
+    cmHeader.dip = ch.sip;
+
+	// 设置为DCI控制消息类型
+    cmHeader.l3Prot = DCI_CM;  // 0xFA
+
+	// 设置IPv4头部其他字段
+    cmHeader.m_ttl = 64;
+    cmHeader.ipv4Flags = 0;
+    cmHeader.m_payloadSize = 0;  // 没有payload
+	/** IPV4_H **/
+
+	// PPP协议号
+	cmHeader.pppProto = 0x0021;  
+
+	// 准备发送
+	cmPacket->AddHeader(cmHeader);
+    cmPacket->AddPacketTag(FlowIdTag(ifIndex));
+
+	// 发送控制消息
+	int idx = GetOutDev(cmPacket, cmHeader);
+	std::cout << idx << "test " << std::endl;
+	m_devices[idx]->SwitchSend(0, cmPacket, cmHeader);
+
+}
+/** Control Message **/
+
+
 void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 	/**	Flow Table**/
 	/** 包到达处对对应流表项更新 **/
@@ -333,6 +385,15 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 		}
 	}
 	/**	Flow Table**/
+
+	/** Control Message **/
+	// 经测试可以在 0 号 DCI 交换机上收到控制报文
+	if (ch.l3Prot ==0xFA){
+		std::cout << "Switch" <<GetId() << std::endl;
+		std::cout << "DCI CM" << (int)ch.DCI_CM_header.test<<std::endl;
+		return; // Drop
+	}
+	/** Control Message **/
 
 	int idx = GetOutDev(p, ch);
 //	std::cout << "*****" << std::endl;
@@ -476,6 +537,17 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
                         p->AddHeader(ppp);
 		}
 		/* BICC */
+
+		/** Control Message **/
+		// 先测试报文构造可行性
+		if (DCI_CM_test && m_mmu->node_id == 37)
+		{
+			FlowKey key= ExtractFlowKey(ch);
+			SendControlMessage(p,idx);
+			DCI_CM_test = false;
+			std::cout << "DCI CM" << std::endl;
+		}
+		/** Control Message **/
 /*
 		if(1 == m_mmu->node_id && ch.l3Prot == 0x11 && ecnbits){
 			PppHeader ppp;

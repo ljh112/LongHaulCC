@@ -138,6 +138,13 @@ public:
 	void LogFlowTablePeriodically();
     void StartFlowTableLogging(uint32_t targetSwitchId, double intervalMs, std::string filename);
 	/**	Flow Table **/
+
+	/** Control Message **/
+	uint32_t queueThreshold; // 队列阈值
+	bool DCI_CM_test;
+
+	void SendControlMessage(Ptr<Packet> p, uint32_t ifIndex);
+	/** Control Message **/
 };
 
 } /* namespace ns3 */

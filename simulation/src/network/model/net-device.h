@@ -339,9 +339,8 @@ public:
    */
   virtual bool SupportsSendFrom (void) const = 0;
 
-  // Yuliang
   // For switch
-  virtual bool SwitchSend (uint32_t qIndex, Ptr<Packet> packet, CustomHeader &ch);
+  virtual bool SwitchSend (uint32_t qIndex, Ptr<Packet> packet, CustomHeader &ch, bool flag);
 };
 
 } // namespace ns3

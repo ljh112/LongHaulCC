@@ -53,7 +53,7 @@ bool NetDevice::IsQbb(void) const {
 	return false;
 }
 
-bool NetDevice::SwitchSend (uint32_t qIndex, Ptr<Packet> packet, CustomHeader &ch){
+bool NetDevice::SwitchSend (uint32_t qIndex, Ptr<Packet> packet, CustomHeader &ch, bool flag){
 	printf("NetDevice::SwitchSend not implemented\n");
 	return false;
 }

@@ -99,7 +99,7 @@ public:
    * @param protocolNumber Protocol used in packet
    */
   virtual bool Send(Ptr<Packet> packet, const Address &dest, uint16_t protocolNumber);
-  virtual bool SwitchSend (uint32_t qIndex, Ptr<Packet> packet, CustomHeader &ch);
+  virtual bool SwitchSend (uint32_t qIndex, Ptr<Packet> packet, CustomHeader &ch, bool flag);
 
   /**
    * Get the size of Tx buffer available in the device

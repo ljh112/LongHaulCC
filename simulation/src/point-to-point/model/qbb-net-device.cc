@@ -405,7 +405,7 @@ namespace ns3 {
 		return false;
 	}
 
-	bool QbbNetDevice::SwitchSend (uint32_t qIndex, Ptr<Packet> packet, CustomHeader &ch){
+	bool QbbNetDevice::SwitchSend (uint32_t qIndex, Ptr<Packet> packet, CustomHeader &ch, bool flag){
 /*
  		if(1 == m_mmu->node_id && ch.l3Prot == 0x11) {
 			std::cout << ch.dip << std::endl;
@@ -414,7 +414,14 @@ namespace ns3 {
 		m_macTxTrace(packet);
 		m_traceEnqueue(packet, qIndex);
 		m_queue->Enqueue(packet, qIndex);
-		DequeueAndTransmit();
+		
+		if(flag){
+			DequeueAndTransmit();
+		}
+//		else {
+			// std::cout << "&*&*&*&******************&&*&**&*&**&" << std::endl;
+//		}
+
 		return true;
 	}
 
@@ -433,7 +440,7 @@ namespace ns3 {
 		AddHeader(p, 0x800);
 		CustomHeader ch(CustomHeader::L2_Header | CustomHeader::L3_Header | CustomHeader::L4_Header);
 		p->PeekHeader(ch);
-		SwitchSend(0, p, ch);
+		SwitchSend(0, p, ch, true);
 	}
 
 	bool

@@ -440,7 +440,7 @@ void SwitchNode::SendControlMessage(Ptr<Packet> p, uint32_t ifIndex){
 	// 发送控制消息
 	int idx = GetOutDev(cmPacket, cmHeader);
 	std::cout << idx << "test " << std::endl;
-	m_devices[idx]->SwitchSend(0, cmPacket, cmHeader);
+	m_devices[idx]->SwitchSend(0, cmPacket, cmHeader, true);
 
 }
 /** Control Message **/
@@ -790,9 +790,14 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 
 		/** New Send **/
 		// 通过 isSend 标记确认是否需要发送
-        if(isSend){
-             m_devices[idx]->SwitchSend(qIndex, p, ch);
+/*
+	if(isSend) {
+             m_devices[idx]->SwitchSend(qIndex, p, ch, true);
         }
+)
+*/
+		m_devices[idx]->SwitchSend(qIndex, p, ch, isSend);
+
 		/** New Send **/
 
 		/** Original Send **/

@@ -13,6 +13,11 @@
 #include "qbb-header.h"
 #include "cn-header.h"
 
+/** QP MONITOR **/
+#include <fstream> 
+#include <iostream>
+/** QP MONITOR **/
+
 namespace ns3{
 
 TypeId RdmaHw::GetTypeId (void)
@@ -205,6 +210,18 @@ void RdmaHw::Setup(QpCompleteCallback cb){
 	}
 	// setup qp complete callback
 	m_qpCompleteCallback = cb;
+ 
+	/** QP MONITOR **/
+	// 打开日志文件（只打开一次）
+    // m_outputFile.open("qp_monitor.log", std::ios::out | std::ios::app);
+    // if (!m_outputFile.is_open()) {
+    //     std::cerr << "Error: Unable to open qp_monitor.log for writing." << std::endl;
+    //     return;
+    // }
+
+	// // 启动定时监控
+	// Simulator::Schedule(Seconds(1.0), &RdmaHw::MonitorQps, this);
+	/** QP MONITOR **/
 }
 
 uint32_t RdmaHw::GetNicIdxOfQp(Ptr<RdmaQueuePair> qp){
@@ -1269,5 +1286,29 @@ void RdmaHw::UpdateRateHpPint(Ptr<RdmaQueuePair> qp, Ptr<Packet> p, CustomHeader
                }
        }
 }
+
+/** QP MONITOR **/
+void RdmaHw::MonitorQps() {
+    // 获取当前时间
+    uint64_t currentTime = Simulator::Now().GetTimeStep();
+
+    // 遍历所有 QP
+    for (auto &it : m_qpMap) {
+        Ptr<RdmaQueuePair> qp = it.second;
+
+        // 写入监控信息到文件
+        m_outputFile << "Time: " << currentTime
+                     << ", QP: (SIP: " << qp->sip
+                     << ", DIP: " << qp->dip
+                     << ", SPORT: " << qp->sport
+                     << ", DPORT: " << qp->dport
+                     << "), Rate: " << qp->m_rate.GetBitRate() * 1e-9 << " Gbps"
+                     << std::endl;
+    }
+
+    // 调度下一次监控
+    Simulator::Schedule(MicroSeconds(20), &RdmaHw::MonitorQps, this);
+}
+/** QP MONITOR **/
 
 }

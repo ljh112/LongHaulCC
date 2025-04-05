@@ -9,6 +9,10 @@
 #include <unordered_map>
 #include "pint.h"
 
+/** QP MONITOR **/
+#include <fstream>
+/** QP MONITOR **/
+
 namespace ns3 {
 
 struct RdmaInterfaceMgr{
@@ -161,6 +165,11 @@ public:
 	void UpdateBiccRns(Ptr<RdmaQueuePair> q);
 	void CheckRateDecreaseBiCCRns(Ptr<RdmaQueuePair> q);
 	void ScheduleDecreaseRateBiCCRns(Ptr<RdmaQueuePair> q, uint32_t delta);
+
+	/** QP MONITOR **/
+	std::ofstream m_outputFile; // 日志文件流
+	void MonitorQps();
+	/** QP MONITOR **/
 };
 
 } /* namespace ns3 */

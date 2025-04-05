@@ -197,71 +197,69 @@ SwitchNode::SwitchNode(){
 	/** Control Message **/
 }
 
-
-void SwitchNode::CalcEvent(){
-	if(37 == m_mmu->node_id){
+void SwitchNode::CalcEvent()
+{
+	if (37 == m_mmu->node_id)
+	{
 		// std::cout << counter << std::endl;
-/*
-		if(counter > 0){
-			uint64_t val = std::min((uint64_t)(counter * 1.0 * 8  / TimeReset * 1e6 /1024 / 1024 / 1024), maxBW);
-//			uint64_t val = (uint64_t)(counter * 1.0 * 8  / TimeReset * 1e6 /1024 / 1024 / 1024);
-//			uint64_t val = counter;
-//			std::cout << clock() << " " << val << std::endl;
-			printf("%u %u\n", clock(), val);
-		}
-		counter = 0;
-*/
+		/*
+				if(counter > 0){
+					uint64_t val = std::min((uint64_t)(counter * 1.0 * 8  / TimeReset * 1e6 /1024 / 1024 / 1024), maxBW);
+		//			uint64_t val = (uint64_t)(counter * 1.0 * 8  / TimeReset * 1e6 /1024 / 1024 / 1024);
+		//			uint64_t val = counter;
+		//			std::cout << clock() << " " << val << std::endl;
+					printf("%u %u\n", clock(), val);
+				}
+				counter = 0;
+		*/
 
-                if(through_table2.size() > 0){
-//                      uint64_t val = std::min((uint64_t)(counter * 1.0 * 8  / TimeReset * 1e6 /1024 / 1024 / 1024), maxBW);
-//                      uint64_t val = (uint64_t)(counter * 1.0 * 8  / TimeReset * 1e6 /1024 / 1024 / 1024);
-//                      uint64_t val = counter;
-//                      std::cout << clock() << " " << val << std::endl;
-//                      printf("%u %u\n", clock(), val);
+		if (through_table2.size() > 0)
+		{
+			//                      uint64_t val = std::min((uint64_t)(counter * 1.0 * 8  / TimeReset * 1e6 /1024 / 1024 / 1024), maxBW);
+			//                      uint64_t val = (uint64_t)(counter * 1.0 * 8  / TimeReset * 1e6 /1024 / 1024 / 1024);
+			//                      uint64_t val = counter;
+			//                      std::cout << clock() << " " << val << std::endl;
+			//                      printf("%u %u\n", clock(), val);
 
-                        // through_table[ch.sip] += p->GetSize();
+			// through_table[ch.sip] += p->GetSize();
 			uint64_t totalCnt = 0;
-                        for(auto kv : through_table2){
-                   //             uint64_t key = kv.first;
-                                uint64_t cnt = kv.second;
-                                uint64_t val = std::min((uint64_t)(cnt * 1.0 * 8  / TimeReset * 1e6 /1024 / 1024 / 1024), maxBW);
+			for (auto kv : through_table2)
+			{
+				//             uint64_t key = kv.first;
+				uint64_t cnt = kv.second;
+				uint64_t val = std::min((uint64_t)(cnt * 1.0 * 8 / TimeReset * 1e6 / 1024 / 1024 / 1024), maxBW);
 				totalCnt += val;
-//                                printf("%llu %llu %llu\n", clock(), key, val);
-//  				std::cout << through_table.size() << std::endl;
-  			}
-
-
-                        /** testDCQCN **
-                        for(auto kv : dcqMap){
-                                Mlx mlx = kv.second;
+				//                                printf("%llu %llu %llu\n", clock(), key, val);
+				//  				std::cout << through_table.size() << std::endl;
+			}
+			/** testDCQCN **
+			for(auto kv : dcqMap){
+					Mlx mlx = kv.second;
 //                              if(mlx.m_targetRate > DataRate(0))
-                                std::cout << mlx.m_rate.GetBitRate()/1000000000 << " " << mlx.m_targetRate.GetBitRate()/1000000000 << std::endl;
-                        }
+					std::cout << mlx.m_rate.GetBitRate()/1000000000 << " " << mlx.m_targetRate.GetBitRate()/1000000000 << std::endl;
+			}
 
-                        ** testDCQCN **/
+			** testDCQCN **/
 
-                        /** testRateLimiting **/
-                        for(auto kv : dcqMap){
-//                                Mlx mlx = kv.second;
-//                              if(mlx.m_targetRate > DataRate(0))
-                                //std::cout << mlx.m_rate.GetBitRate()/1000000000 << " " << mlx.m_targetRate.GetBitRate()/1000000000 << std::endl;
+			/** testRateLimiting **/
+			for (auto kv : dcqMap)
+			{
+				//                                Mlx mlx = kv.second;
+				//                              if(mlx.m_targetRate > DataRate(0))
+				// std::cout << mlx.m_rate.GetBitRate()/1000000000 << " " << mlx.m_targetRate.GetBitRate()/1000000000 << std::endl;
 
-                                tokenBuckets[kv.first] = std::max((uint64_t)(kv.second.m_targetRate.GetBitRate() * TimeReset / 1000000), m_minRate.GetBitRate());
-//                              std::cout << kv.first << "   " << tokenBuckets[kv.first] << std::endl;
-                        }
-                        /** testRateLimiting **/
+				tokenBuckets[kv.first] = std::max((uint64_t)(kv.second.m_targetRate.GetBitRate() * TimeReset / 1000000), m_minRate.GetBitRate());
+				//                              std::cout << kv.first << "   " << tokenBuckets[kv.first] << std::endl;
+			}
+			/** testRateLimiting **/
 
+			// printf("%llu %llu\n", clock(), std::min(totalCnt,maxBW));
+			//			std::cout << through_table.size() << std::endl;
+			//                        through_table.clear();
+		}
 
-
-			printf("%llu %llu\n", clock(), std::min(totalCnt,maxBW));
-//			std::cout << through_table.size() << std::endl;
-//                        through_table.clear();
-                }
-
-
-//             counter = 0;
+		//             counter = 0;
 		through_table2.clear();
-
 
 		Simulator::Cancel(rpTimer);
 		rpTimer = Simulator::Schedule(MicroSeconds(TimeReset), &SwitchNode::CalcEvent, this);
@@ -551,22 +549,24 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 	int idx = GetOutDev(p, ch);
 
 	/** Through Table **/
+	// 按五元组统计不同流的流量
 	// std::cout << "*****" << std::endl;
 	// counter += p->GetSize();
 	
 	// std::cout << ch.sip << std::endl;
 	// through_table[ch.sip] += p->GetSize();
 	// std::cout << ch.sip  << std::endl;
-    if (ch.l3Prot == 0x11 || ch.l3Prot == 0x6){
-        // std::cout << ch.l3Prot << " "  << ch.sip << std::endl;
-        // through_table[ch.sip] += p->GetSize();
+	if (ch.l3Prot == 0x11 || ch.l3Prot == 0x6)
+	{
+		// std::cout << ch.l3Prot << " "  << ch.sip << std::endl;
+		// through_table[ch.sip] += p->GetSize();
 		// uint64_t flowId = ((uint64_t)ch.sip << 32) | ((uint64_t)ch.udp.pg << 16) | (uint64_t)ch.udp.sport;
-		FlowKey key= ExtractFlowKey(ch);
-		
+		FlowKey key = ExtractFlowKey(ch);
+
 		// std::cout << key << std::endl;
 		// through_table[flowId] += p->GetSize();
 		through_table2[key] += p->GetSize();
-        }
+	}
 	else if(ch.l3Prot == 0xFC || ch.l3Prot == 0xFD){ // || ch.l3Prot == 0xFF || ch.l3Prot == 0xFE
     	// std::cout << ch.l3Prot << " "  << ch.dip << std::endl;
         // through_table[ch.dip] += p->GetSize();

@@ -23,6 +23,11 @@
 #include "ns3/simulator.h"
 NS_LOG_COMPONENT_DEFINE("SwitchNode");
 /**	Flow Table Logging **/
+
+/** New L4 Header **/
+#include "ns3/custom-header.h"
+/** New L4 Header **/
+
 namespace ns3 {
 
 TypeId SwitchNode::GetTypeId (void)
@@ -445,11 +450,61 @@ void SwitchNode::SendControlMessage(Ptr<Packet> p, uint32_t ifIndex){
 }
 /** Control Message **/
 
+/** SRC-DCI CNP GENERATION **/
+// 生成DCI CNP报文
+void SwitchNode::SrcDCICNPGen(Ptr<Packet> p, uint32_t ifIndex) {
+	// 解析原始数据包头部
+	CustomHeader ch(CustomHeader::L2_Header | CustomHeader::L3_Header | CustomHeader::L4_Header);
+	ch.getInt = 1; // 解析INT头部
+	p->PeekHeader(ch);
+
+   // 创建控制消息包
+   Ptr<Packet> cmPacket = Create<Packet>(0);
+
+   // 创建新的自定义头部
+   CustomHeader cmHeader;
+   cmHeader.headerType = CustomHeader::L2_Header | CustomHeader::L3_Header | CustomHeader::L4_Header;
+
+   // 设置控制消息头部内容
+   cmHeader.SRC_DCI_CNP_header.sport = ch.udp.dport; 
+   cmHeader.SRC_DCI_CNP_header.dport = ch.udp.sport;
+   cmHeader.SRC_DCI_CNP_header.pg = ch.udp.pg;
+
+   /** IPV4_H **/	
+   // 交换源目的IP地址
+   cmHeader.sip = ch.dip;
+   cmHeader.dip = ch.sip;
+
+   // 设置为DCI控制消息类型
+   cmHeader.l3Prot = SRC_DCI_CNP;  
+
+   // 设置IPv4头部其他字段
+   cmHeader.m_ttl = 64;
+   cmHeader.ipv4Flags = 0;
+   cmHeader.m_payloadSize = 0;  // 没有payload
+   /** IPV4_H **/
+
+   // PPP协议号
+   cmHeader.pppProto = 0x0021;  
+
+   // 准备发送
+   cmPacket->AddHeader(cmHeader);
+   cmPacket->AddPacketTag(FlowIdTag(ifIndex));
+
+   // 发送控制消息
+   int idx = GetOutDev(cmPacket, cmHeader);
+   // std::cout << idx << "test " << std::endl;
+   m_devices[idx]->SwitchSend(0, cmPacket, cmHeader, true);
+
+}
+/** SRC-DCI CNP GENERATION **/
+
 
 void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 	/**	Flow Table**/
 	/** 包到达处对对应流表项更新 **/
-	if (ch.l3Prot == 0x11){ // 针对UDP流量进行信息统计
+	if (ch.l3Prot == 0x11 && (m_mmu->node_id == DCI_SWITCH_0 || m_mmu->node_id == DCI_SWITCH_1)){
+		 // 在 DCI 交换机处针对UDP流量进行信息统计
 		FlowKey key= ExtractFlowKey(ch);
 		// 查找或创建流记录
 		auto it = m_flowTable.find(key);
@@ -464,6 +519,7 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 			m_flowTable[key] = stats;
 			stats.maxQueueBytes = p->GetSize();  // 初始值即为当前值
         	stats.maxQueuePackets = 1;           // 初始值即为当前值
+			stats.lastCnpTime = Seconds(-1.0);   // 初始化为负
 		} else {
 			// 更新现有流
 			it->second.queueBytes += p->GetSize();
@@ -655,6 +711,14 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 		}
 		/** Control Message **/
 
+		/** SRC-DCI CNP TEST **/
+		// 测试报文有效性
+		if (ch.l3Prot == 0x11 && m_mmu->node_id == DCI_SWITCH_1)
+		{
+			SrcDCICNPGen(p,idx);
+		}
+		/** SRC-DCI CNP TEST **/
+
 		/* BICC */
 		/*
 		if(1 == m_mmu->node_id && ch.l3Prot == 0x11 && ecnbits){
@@ -790,13 +854,14 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 
 		/** New Send **/
 		// 通过 isSend 标记确认是否需要发送
-/*
-	if(isSend) {
-             m_devices[idx]->SwitchSend(qIndex, p, ch, true);
-        }
-)
-*/
-		m_devices[idx]->SwitchSend(qIndex, p, ch, isSend);
+		/*
+			if(isSend) {
+					m_devices[idx]->SwitchSend(qIndex, p, ch, true);
+				}
+		)
+		*/
+		// m_devices[idx]->SwitchSend(qIndex, p, ch, isSend);
+		m_devices[idx]->SwitchSend(qIndex, p, ch, true);// 测试用，暂不考虑数据包缓存，直接转发
 
 		/** New Send **/
 

@@ -25,6 +25,10 @@
 #define DCI_CM 0xFA
 /** Control Message **/
 
+/** SRC-DCI CNP **/
+#define SRC_DCI_CNP 0xF9
+/** SRC-DCI CNP **/
+
 #include "ns3/header.h"
 #include "ns3/int-header.h"
 
@@ -145,6 +149,14 @@ public:
       uint8_t test;
     }DCI_CM_header;
     /** Control Message **/
+    /** SRC-DCI CNP **/
+    struct
+    {
+      uint16_t sport;  
+      uint16_t dport;  
+      uint16_t pg;
+    } SRC_DCI_CNP_header;
+    /** SRC-DCI CNP **/
   };
 
   uint8_t GetIpv4EcnBits (void) const;

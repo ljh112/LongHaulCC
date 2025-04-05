@@ -8,6 +8,11 @@
 #include "pint.h"
 #include <ns3/event-id.h>
 
+/** DCI NUMBER **/
+# define DCI_SWITCH_0 0
+# define DCI_SWITCH_1 37
+/** DCI NUMBER **/
+
 namespace ns3 {
 
 /** DCQCN **/
@@ -179,6 +184,7 @@ public:
 		uint64_t totalBytes;       // 累计字节数
 		uint64_t totalPackets;     // 累计数据包数
 		Time lastUpdateTime;       // 最后更新时间
+		Time lastCnpTime;  		   // 该流最后 CNP 的发送时间
 	};
 	// 流表类型定义
 	typedef std::unordered_map<FlowKey, FlowQueueStats, FlowKeyHash> FlowTable;
@@ -210,6 +216,10 @@ public:
 
 	void SendControlMessage(Ptr<Packet> p, uint32_t ifIndex);
 	/** Control Message **/
+
+	/** SRC-DCI CNP GENERATION **/
+	void SrcDCICNPGen(Ptr<Packet> p, uint32_t ifIndex);
+	/** SRC-DCI CNP GENERATION **/
 
 
 	std::unordered_map<FlowKey, uint64_t, FlowKeyHash> through_table2;

@@ -29,6 +29,8 @@ Please see `mix/config.txt` for example.
 The direct command to run is:
 `./waf --run 'scratch/third mix/config.txt'`
 
+./waf --run 'scratch/third mix/config_ls.txt'
+
 We provide a `run.py` for automatically *generating config* and *running experiment*. Please `python run.py -h` for usage.
 Example usage:
 `python run.py --cc hp --trace flow --bw 100 --topo topology --hpai 50`

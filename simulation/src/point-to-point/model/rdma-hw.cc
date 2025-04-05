@@ -462,6 +462,7 @@ int RdmaHw::ReceiveAck(Ptr<Packet> p, CustomHeader &ch){
 	// handle cnp
 	if (cnp){
 		if (m_cc_mode == 1 || m_cc_mode == 9){ // mlx version
+			// bug to fix：这里默认带 cnp 的 ack 来自远端了，实际可能来自源 DC
 			// cnp_received_mlx(qp);
 			/** BiCC **/
 //			std::cout << "1、  " << ch.sip << " " << port << " " << qIndex << std::endl;
@@ -512,6 +513,17 @@ int RdmaHw::Receive(Ptr<Packet> p, CustomHeader &ch){
 		}
 	}
 	// BICC
+	/** SRC-DCI CNP REFELECT **/
+	// else if(ch.l3Prot == SRC_DCI_CNP){ 
+	// 	// 经验证，不同的流该三元组不同，可定位到对应 qp
+	// 	// 参考：ReceiveAck 中 Getqp 的逻辑
+	// 	std::cout << "SRC-DCI CNP RECEIVE" << std::endl;
+	// 	std::cout << "IP:"<< ch.sip << std::endl; 							// 流目的端 IP
+	// 	std::cout << "Port: "<< ch.SRC_DCI_CNP_header.dport  << std::endl;	// 流源端口号，目前在生成时被交换过
+	// 	std::cout << "qIndex: "<< ch.SRC_DCI_CNP_header.pg  << std::endl;	// 流 qIndex
+	// 	std::cout << (GetQp(ch.sip, ch.SRC_DCI_CNP_header.dport, ch.SRC_DCI_CNP_header.pg)!=NULL) << std::endl;
+	// }
+	/** SRC-DCI CNP REFELECT **/
 
 	return 0;
 }

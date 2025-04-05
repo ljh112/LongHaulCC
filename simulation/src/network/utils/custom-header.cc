@@ -106,6 +106,10 @@ uint32_t CustomHeader::GetSerializedSize (void) const{
 		else if (l3Prot == 0xFA)
 			len+= 1;
 		/** Control Message **/
+		/** SRC-DCI CNP **/
+		else if (l3Prot == 0xF9)
+			len += 6;
+		/** SRC-DCI CNP **/
 	}
 	return len;
 }
@@ -196,6 +200,13 @@ void CustomHeader::Serialize (Buffer::Iterator start) const{
 		  i.WriteU8(DCI_CM_header.test);
 	  }
 	  /** Control Message **/
+	  /** SRC-DCI CNP **/
+	  else if (l3Prot == 0xF9){
+		  i.WriteU16(SRC_DCI_CNP_header.sport);
+		  i.WriteU16(SRC_DCI_CNP_header.dport);
+		  i.WriteU16(SRC_DCI_CNP_header.pg);
+	  }
+	  /** SRC-DCI CNP **/
   }
 }
 
@@ -353,6 +364,14 @@ CustomHeader::Deserialize (Buffer::Iterator start)
 		  l4Size = 1;
 	  }
 	  /** Control Message **/
+	  /** SRC-DCI CNP **/
+	  else if (l3Prot == 0xF9){
+		  SRC_DCI_CNP_header.sport = i.ReadU16();
+		  SRC_DCI_CNP_header.dport = i.ReadU16();
+		  SRC_DCI_CNP_header.pg = i.ReadU16();
+		  l4Size = 6;
+	  }
+	  /** SRC-DCI CNP **/
 //	  
   }
 

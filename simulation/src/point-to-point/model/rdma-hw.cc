@@ -430,8 +430,8 @@ int RdmaHw::ReceiveAck(Ptr<Packet> p, CustomHeader &ch){
 
 //	std::cout << "1、  " << ch.sip << " " << port << " " << qIndex << std::endl;
         /** test calulate Th and buffer use */
-        uint64_t nowTime = clock();
-        double nowCur = (double)qp->m_rate.GetBitRate() /1000 /1000 /1000;
+        // uint64_t nowTime = clock();
+        // double nowCur = (double)qp->m_rate.GetBitRate() /1000 /1000 /1000;
        // printf("%u %u %u %u\n", nowTime, qp->sip.Get(), qp->dip.Get(), nowCur);
 /*
         IntHeader &ih = ch.ack.ih;
@@ -529,6 +529,25 @@ int RdmaHw::Receive(Ptr<Packet> p, CustomHeader &ch){
 			cnp_received_mlx(qp, false);
 		}
 	}
+	/** SRC-DCI CNP **/
+	else if (ch.l3Prot == SRC_DCI_CNP && m_cc_mode == 1)
+	{
+		//确认对应 QP
+		uint16_t qIndex = ch.SRC_DCI_CNP_header.pg;
+		uint16_t port = ch.SRC_DCI_CNP_header.dport;
+		Ptr<RdmaQueuePair> qp = GetQp(ch.sip, port, qIndex);// 流目的端 IP，源端端口号，qIndex
+
+		if (qp == NULL){
+			std::cout << "ERROR: " << "node:" << m_node->GetId() << ' ' << "SRC-DCI CNP" << " NIC cannot find the flow\n";
+			return 0;
+		}
+		
+		//执行 DCQCN 降速处理
+		cnp_received_mlx(qp,true);
+
+	}
+	/** SRC-DCI CNP **/
+	
 	// BICC
 	/** SRC-DCI CNP REFELECT **/
 	// else if(ch.l3Prot == SRC_DCI_CNP){ 
@@ -757,14 +776,20 @@ void RdmaHw::cnp_received_mlx(Ptr<RdmaQueuePair> q, bool isLongLoop){
 		// schedule rate decrease
 		ScheduleDecreaseRateMlx(q, 1, !isLongLoop); // add 1 ns to make sure rate decrease is after alpha update
 		// BICC
-		ScheduleDecreaseRateBiCCRns(q, 1);
+		/** fix: BICC 模式下开启 **/
+		if (m_cc_mode == 9){
+			ScheduleDecreaseRateBiCCRns(q, 1);
+		}
 		// set rate on first CNP
 		q->mlx.m_targetRate = q->m_rate = m_rateOnFirstCNP * q->m_rate;
 		q->mlx.m_first_cnp = false;
 
 		// BiCC
-		q->BiCC.Rns = q->m_max_rate;
-		q->BiCC.b_lastUpdateTs = Simulator::Now().GetTimeStep();
+		/** fix: BICC 模式下开启 **/
+		if (m_cc_mode == 9){
+			q->BiCC.Rns = q->m_max_rate;
+			q->BiCC.b_lastUpdateTs = Simulator::Now().GetTimeStep();
+		}
 	}
 }
 

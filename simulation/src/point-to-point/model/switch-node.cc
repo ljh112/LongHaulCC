@@ -223,15 +223,23 @@ void SwitchNode::CalcEvent()
 
 			// through_table[ch.sip] += p->GetSize();
 			uint64_t totalCnt = 0;
+			// std::cout << "====================" << std::endl;
 			for (auto kv : through_table2)
-			{
-				//             uint64_t key = kv.first;
+			{	
 				uint64_t cnt = kv.second;
 				uint64_t val = std::min((uint64_t)(cnt * 1.0 * 8 / TimeReset * 1e6 / 1024 / 1024 / 1024), maxBW);
 				totalCnt += val;
+				/** Rate Calc **/
+				FlowKey key = kv.first;
+				m_flowTable[key].currentRate = (uint64_t)(cnt * 1.0 * 8 / TimeReset);
+				// std::cout << key.sip << " " << key.dip << " " << key.sport << " " << key.dport << std::endl;
+				// std::cout << m_flowTable[key].currentRate << " "<< cnt << std::endl;
+				/** Rate Calc **/
+
 				//                                printf("%llu %llu %llu\n", clock(), key, val);
 				//  				std::cout << through_table.size() << std::endl;
 			}
+			// std::cout << "====================" << std::endl;
 			/** testDCQCN **
 			for(auto kv : dcqMap){
 					Mlx mlx = kv.second;
@@ -539,11 +547,11 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 
 	/** Control Message **/
 	// 经测试可以在 0 号 DCI 交换机上收到控制报文
-	if (ch.l3Prot ==0xFA){
-		std::cout << "Switch" <<GetId() << std::endl;
-		std::cout << "DCI CM" << (int)ch.DCI_CM_header.test<<std::endl;
-		return; // Drop
-	}
+	// if (ch.l3Prot ==0xFA){
+	// 	std::cout << "Switch" <<GetId() << std::endl;
+	// 	std::cout << "DCI CM" << (int)ch.DCI_CM_header.test<<std::endl;
+	// 	return; // Drop
+	// }
 	/** Control Message **/
 
 	int idx = GetOutDev(p, ch);
@@ -556,27 +564,27 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 	// std::cout << ch.sip << std::endl;
 	// through_table[ch.sip] += p->GetSize();
 	// std::cout << ch.sip  << std::endl;
-	if (ch.l3Prot == 0x11 || ch.l3Prot == 0x6)
-	{
-		// std::cout << ch.l3Prot << " "  << ch.sip << std::endl;
-		// through_table[ch.sip] += p->GetSize();
-		// uint64_t flowId = ((uint64_t)ch.sip << 32) | ((uint64_t)ch.udp.pg << 16) | (uint64_t)ch.udp.sport;
-		FlowKey key = ExtractFlowKey(ch);
+	// if (ch.l3Prot == 0x11 || ch.l3Prot == 0x6)
+	// {
+	// 	// std::cout << ch.l3Prot << " "  << ch.sip << std::endl;
+	// 	// through_table[ch.sip] += p->GetSize();
+	// 	// uint64_t flowId = ((uint64_t)ch.sip << 32) | ((uint64_t)ch.udp.pg << 16) | (uint64_t)ch.udp.sport;
+	// 	FlowKey key = ExtractFlowKey(ch);
 
-		// std::cout << key << std::endl;
-		// through_table[flowId] += p->GetSize();
-		through_table2[key] += p->GetSize();
-	}
-	else if(ch.l3Prot == 0xFC || ch.l3Prot == 0xFD){ // || ch.l3Prot == 0xFF || ch.l3Prot == 0xFE
-    	// std::cout << ch.l3Prot << " "  << ch.dip << std::endl;
-        // through_table[ch.dip] += p->GetSize();
-        // uint64_t flowId = ((uint64_t)ch.dip << 32) | ((uint64_t)ch.ack.pg << 16) | (uint64_t)ch.ack.dport;
-        FlowKey key= ExtractFlowKey(ch);
+	// 	// std::cout << key << std::endl;
+	// 	// through_table[flowId] += p->GetSize();
+	// 	through_table2[key] += p->GetSize();
+	// }
+	// else if(ch.l3Prot == 0xFC || ch.l3Prot == 0xFD){ // || ch.l3Prot == 0xFF || ch.l3Prot == 0xFE
+    // 	// std::cout << ch.l3Prot << " "  << ch.dip << std::endl;
+    //     // through_table[ch.dip] += p->GetSize();
+    //     // uint64_t flowId = ((uint64_t)ch.dip << 32) | ((uint64_t)ch.ack.pg << 16) | (uint64_t)ch.ack.dport;
+    //     FlowKey key= ExtractFlowKey(ch);
 		
-		// std::cout << key << std::endl;
-        // through_table[flowId] += p->GetSize();
-		through_table2[key] += p->GetSize();
-    }
+	// 	// std::cout << key << std::endl;
+    //     // through_table[flowId] += p->GetSize();
+	// 	through_table2[key] += p->GetSize();
+    // }
 	/** Through Table **/
 
 
@@ -686,9 +694,22 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 
 		/* BICC */
 		uint8_t ecnbits = ch.GetIpv4EcnBits();
-        bool egressCongested = m_ecnEnabled && m_mmu->ShouldSendCN(idx, qIndex);
-        if(9 == m_ccMode && 0 == m_mmu->node_id && ch.l3Prot == 0x11 && (egressCongested || ecnbits)){
-			sendCNPByDCI(p, idx);
+        // bool egressCongested = m_ecnEnabled && m_mmu->ShouldSendCN(idx, qIndex);
+        // if((DCI_ALG == 1||9 == m_ccMode) && (DCI_SWITCH_0== m_mmu->node_id || DCI_SWITCH_1== m_mmu->node_id) && ch.l3Prot == 0x11 && (egressCongested || ecnbits)){
+		/** NEW ECN LOGIC **/
+		// 解释：这里只会在 DCI 交换机上为源 DC 内已有 ECN 标记的报文进行 CNP 代理，DCI 交换机本身的 ECN 标记 代理在 SwitchNotifyDequeue 中实现
+		if((DCI_ALG == 1||9 == m_ccMode) && (DCI_SWITCH_0== m_mmu->node_id || DCI_SWITCH_1== m_mmu->node_id) && ch.l3Prot == 0x11 && ecnbits){
+		/** NEW ECN LOGIC **/
+			/** CNP SELECT **/
+			if (m_ccMode == 9)
+			{
+				sendCNPByDCI(p, idx);
+			}
+			else if (m_ccMode == 1)
+			{
+				SrcDCICNPGen(p, idx);
+			}
+			/** CNP SELECT **/
 
 			PppHeader ppp;
             Ipv4Header h;
@@ -702,21 +723,22 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 
 		/** Control Message **/
 		// 先测试报文构造可行性
-		if (DCI_CM_test && m_mmu->node_id == 37)
-		{
-			FlowKey key= ExtractFlowKey(ch);
-			SendControlMessage(p,idx);
-			DCI_CM_test = false;
-			std::cout << "DCI CM" << std::endl;
-		}
+		// if (DCI_CM_test && m_mmu->node_id == 37)
+		// {
+		// 	FlowKey key= ExtractFlowKey(ch);
+		// 	SendControlMessage(p,idx);
+		// 	DCI_CM_test = false;
+		// 	std::cout << "DCI CM" << std::endl;
+		// 	// std::cout << "mccmode"<< m_ccMode << std::endl;
+		// }
 		/** Control Message **/
 
 		/** SRC-DCI CNP TEST **/
-		// 测试报文有效性
-		if (ch.l3Prot == 0x11 && m_mmu->node_id == DCI_SWITCH_1)
-		{
-			SrcDCICNPGen(p,idx);
-		}
+		// 测试CNP报文有效性
+		// if (ch.l3Prot == 0x11 && m_mmu->node_id == DCI_SWITCH_1)
+		// {
+		// 	SrcDCICNPGen(p,idx);
+		// }
 		/** SRC-DCI CNP TEST **/
 
 		/* BICC */
@@ -999,17 +1021,17 @@ void SwitchNode::SwitchNotifyDequeue(uint32_t ifIndex, uint32_t qIndex, Ptr<Pack
     	through_table2[key] += p->GetSize();		
 		// through_table[flowId] += p->GetSize();
 	}
-	else if(ch.l3Prot == 0xFC || ch.l3Prot == 0xFD){ // || ch.l3Prot == 0xFF || ch.l3Prot == 0xFE
-		// std::cout << ch.l3Prot << " "  << ch.dip << std::endl;
-		// through_table[ch.dip] += p->GetSize();
-    	// uint64_t flowId = ((uint64_t)ch.dip << 32) | ((uint64_t)ch.ack.pg << 16) | (uint64_t)ch.ack.dport;
-    	// through_table[flowId] += p->GetSize();
-        FlowKey key= ExtractFlowKey(ch);
+	// else if(ch.l3Prot == 0xFC || ch.l3Prot == 0xFD){ // || ch.l3Prot == 0xFF || ch.l3Prot == 0xFE
+	// 	// std::cout << ch.l3Prot << " "  << ch.dip << std::endl;
+	// 	// through_table[ch.dip] += p->GetSize();
+    // 	// uint64_t flowId = ((uint64_t)ch.dip << 32) | ((uint64_t)ch.ack.pg << 16) | (uint64_t)ch.ack.dport;
+    // 	// through_table[flowId] += p->GetSize();
+    //     FlowKey key= ExtractFlowKey(ch);
 
-        // std::cout << key << std::endl;
-        // through_table[flowId] += p->GetSize();
-        through_table2[key] += p->GetSize();
-	}
+    //     // std::cout << key << std::endl;
+    //     // through_table[flowId] += p->GetSize();
+    //     through_table2[key] += p->GetSize();
+	// }
 	/** Through Table **/
 
 	/** Flow Table **/
@@ -1041,14 +1063,36 @@ void SwitchNode::SwitchNotifyDequeue(uint32_t ifIndex, uint32_t qIndex, Ptr<Pack
 			//std::cout << "22222222222" << std::endl;
 			/** TEST **/
 
-			if (egressCongested){
-				PppHeader ppp;
-				Ipv4Header h;
-				p->RemoveHeader(ppp);
-				p->RemoveHeader(h);
-				h.SetEcn((Ipv4Header::EcnType)0x03);
-				p->AddHeader(h);
-				p->AddHeader(ppp);
+			if (egressCongested)
+			{
+				if (DCI_ALG == 0 && m_ccMode != 9)
+				{
+					PppHeader ppp;
+					Ipv4Header h;
+					p->RemoveHeader(ppp);
+					p->RemoveHeader(h);
+					h.SetEcn((Ipv4Header::EcnType)0x03);
+					p->AddHeader(h);
+					p->AddHeader(ppp);
+				}
+				else if (m_mmu->node_id == DCI_SWITCH_0 || m_mmu->node_id == DCI_SWITCH_1)
+				{
+					if (DCI_ALG == 1 && m_ccMode == 1)
+					{
+						SrcDCICNPGen(p, ifIndex);
+					}
+					else if (m_ccMode == 9)
+					{
+						sendCNPByDCI(p, ifIndex);
+					}
+					PppHeader ppp;
+					Ipv4Header h;
+					p->RemoveHeader(ppp);
+					p->RemoveHeader(h);
+					h.SetEcn((Ipv4Header::EcnType)0x00);
+					p->AddHeader(h);
+					p->AddHeader(ppp);
+				}
 
 				/** BICC **/
 				// std::cout << m_mmu->node_id << std::endl;

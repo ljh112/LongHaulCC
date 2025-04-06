@@ -13,6 +13,11 @@
 # define DCI_SWITCH_1 37
 /** DCI NUMBER **/
 
+/** DCI ALG FLAG **/
+// 确定 DCI 算法是否开启
+# define DCI_ALG 0
+/** DCI ALG FLAG **/
+
 namespace ns3 {
 
 /** DCQCN **/
@@ -185,6 +190,9 @@ public:
 		uint64_t totalPackets;     // 累计数据包数
 		Time lastUpdateTime;       // 最后更新时间
 		Time lastCnpTime;  		   // 该流最后 CNP 的发送时间
+		/** rate monitor **/
+		uint64_t currentRate; // 当前速率
+		/** rate monitor **/
 	};
 	// 流表类型定义
 	typedef std::unordered_map<FlowKey, FlowQueueStats, FlowKeyHash> FlowTable;

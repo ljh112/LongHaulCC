@@ -199,7 +199,7 @@ SwitchNode::SwitchNode(){
 
 
 void SwitchNode::CalcEvent(){
-	if(37 == m_mmu->node_id){
+	if(DCI_SWITCH_1 == m_mmu->node_id || DCI_SWITCH_0 == m_mmu->node_id){
 		// std::cout << counter << std::endl;
 /*
 		if(counter > 0){
@@ -253,7 +253,7 @@ void SwitchNode::CalcEvent(){
 
 
 
-			printf("%llu %llu\n", clock(), std::min(totalCnt,maxBW));
+			printf("%llu %llu %llu\n", m_mmu->node_id, clock(), std::min(totalCnt,maxBW));
 //			std::cout << through_table.size() << std::endl;
 //                        through_table.clear();
                 }
@@ -501,6 +501,14 @@ void SwitchNode::SrcDCICNPGen(Ptr<Packet> p, uint32_t ifIndex) {
 
 
 void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
+//	if (m_mmu->node_id == DCI_SWITCH_0 && ch.l3Prot == 0xFC){
+	FlowIdTag t;
+        p->PeekPacketTag(t);
+        uint32_t inDev = t.GetFlowId();
+//		std::cout << inDev << std::endl;
+//	}
+	
+
 	/**	Flow Table**/
 	/** 包到达处对对应流表项更新 **/
 	if (ch.l3Prot == 0x11 && (m_mmu->node_id == DCI_SWITCH_0 || m_mmu->node_id == DCI_SWITCH_1)){
@@ -557,7 +565,8 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 	// std::cout << ch.sip << std::endl;
 	// through_table[ch.sip] += p->GetSize();
 	// std::cout << ch.sip  << std::endl;
-    if (ch.l3Prot == 0x11 || ch.l3Prot == 0x6){
+   if(m_mmu->node_id == DCI_SWITCH_0 || m_mmu->node_id == DCI_SWITCH_1){
+  	if ((ch.l3Prot == 0x11 || ch.l3Prot == 0x6) && 1 == inDev){
         // std::cout << ch.l3Prot << " "  << ch.sip << std::endl;
         // through_table[ch.sip] += p->GetSize();
 		// uint64_t flowId = ((uint64_t)ch.sip << 32) | ((uint64_t)ch.udp.pg << 16) | (uint64_t)ch.udp.sport;
@@ -567,16 +576,17 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 		// through_table[flowId] += p->GetSize();
 		through_table2[key] += p->GetSize();
         }
-	else if(ch.l3Prot == 0xFC || ch.l3Prot == 0xFD){ // || ch.l3Prot == 0xFF || ch.l3Prot == 0xFE
+	else if((ch.l3Prot == 0xFC || ch.l3Prot == 0xFD) && 1 == inDev){ // || ch.l3Prot == 0xFF || ch.l3Prot == 0xFE
     	// std::cout << ch.l3Prot << " "  << ch.dip << std::endl;
         // through_table[ch.dip] += p->GetSize();
         // uint64_t flowId = ((uint64_t)ch.dip << 32) | ((uint64_t)ch.ack.pg << 16) | (uint64_t)ch.ack.dport;
-        FlowKey key= ExtractFlowKey(ch);
+        	FlowKey key= ExtractFlowKey(ch);
 		
 		// std::cout << key << std::endl;
         // through_table[flowId] += p->GetSize();
-		through_table2[key] += p->GetSize();
-    }
+		through_table2[key] += p->GetSize();  
+    	}
+   }
 	/** Through Table **/
 
 
@@ -686,17 +696,17 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 
 		/* BICC */
 		uint8_t ecnbits = ch.GetIpv4EcnBits();
-        bool egressCongested = m_ecnEnabled && m_mmu->ShouldSendCN(idx, qIndex);
-        if(9 == m_ccMode && 0 == m_mmu->node_id && ch.l3Prot == 0x11 && (egressCongested || ecnbits)){
+        	bool egressCongested = m_ecnEnabled && m_mmu->ShouldSendCN(idx, qIndex);
+        	if(9 == m_ccMode && (0 == m_mmu->node_id || 37 == m_mmu->node_id) && 1 != inDev && ch.l3Prot == 0x11 && (egressCongested || ecnbits)){
 			sendCNPByDCI(p, idx);
 
 			PppHeader ppp;
-            Ipv4Header h;
-            p->RemoveHeader(ppp);
-            p->RemoveHeader(h);
-            h.SetEcn((Ipv4Header::EcnType)0x00);
-            p->AddHeader(h);
-            p->AddHeader(ppp);
+            		Ipv4Header h;
+            		p->RemoveHeader(ppp);
+            		p->RemoveHeader(h);
+            		h.SetEcn((Ipv4Header::EcnType)0x00);
+            		p->AddHeader(h);
+            		p->AddHeader(ppp);
 		}
 		/* BICC */
 
@@ -747,7 +757,7 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 		uint32_t fip = ch.dip;
 		bool isSend = true;
 
-		if(9 == m_ccMode && 37 == m_mmu->node_id && ch.l3Prot == 0x11){
+		if(9 == m_ccMode && (0 == m_mmu->node_id || 37 == m_mmu->node_id) && 1 == inDev && ch.l3Prot == 0x11){
 			/** Remove ECN Signnal **/
 			PppHeader ppp;
             Ipv4Header h;
@@ -801,7 +811,7 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 			*/
 		}
 
-		if (9 == m_ccMode && 37 == m_mmu->node_id && ch.l3Prot == 0xFC)
+		if (9 == m_ccMode && (0 == m_mmu->node_id || 37 == m_mmu->node_id) && 1 != inDev && ch.l3Prot == 0xFC)
 		{
 			// std::cout << ch.udp.ih.recvBiCCBytes << " ******1******" << std::endl;
 			// uint32_t aSip = ch.sip;

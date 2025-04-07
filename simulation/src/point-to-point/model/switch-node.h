@@ -13,11 +13,6 @@
 # define DCI_SWITCH_1 37
 /** DCI NUMBER **/
 
-/** DCI ALG FLAG **/
-// 确定 DCI 算法是否开启
-# define DCI_ALG 0
-/** DCI ALG FLAG **/
-
 namespace ns3 {
 
 /** DCQCN **/
@@ -229,6 +224,10 @@ public:
 	void SrcDCICNPGen(Ptr<Packet> p, uint32_t ifIndex);
 	/** SRC-DCI CNP GENERATION **/
 
+
+	/** DCI_ALG **/
+	bool m_dciAlgEnabled;
+	/** DCI_ALG **/
 
 	std::unordered_map<FlowKey, uint64_t, FlowKeyHash> through_table2;
 

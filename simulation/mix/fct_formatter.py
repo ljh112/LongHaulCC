@@ -17,7 +17,7 @@ def format_fct_line(line):
         "Destination Node": IP_to_id(parts[1]),
         "Source Port": parts[2],
         "Destination Port": parts[3],
-        "Traffic Size(Bytes)": parts[4],
+        "Traffic Size(MB)": round(float(parts[4]) / 1e6, 6),
         "Start Time(ms)": ns_to_ms(parts[5]),
         "Multiple Flows Completion Time(ms)": ns_to_ms(parts[6]),
         "Single Flow Completion Time(ms)": ns_to_ms(parts[7])

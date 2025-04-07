@@ -140,7 +140,14 @@ TypeId SwitchNode::GetTypeId (void)
 			"The initial number of tokens",
 			UintegerValue(1000),
 			MakeUintegerAccessor(&SwitchNode::initWin),
-			MakeUintegerChecker<uint32_t>())			
+			MakeUintegerChecker<uint32_t>())
+	/** DCI_ALG **/
+	.AddAttribute("DCI_ALG_FLAG",
+		"DCI algorithm flag",
+		BooleanValue(false),
+		MakeBooleanAccessor(&SwitchNode::m_dciAlgEnabled),
+		MakeBooleanChecker())	
+	/** DCI_ALG **/		
   /** New Attribute **/
   ;
   
@@ -695,10 +702,10 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 		/* BICC */
 		uint8_t ecnbits = ch.GetIpv4EcnBits();
         // bool egressCongested = m_ecnEnabled && m_mmu->ShouldSendCN(idx, qIndex);
-        // if((DCI_ALG == 1||9 == m_ccMode) && (DCI_SWITCH_0== m_mmu->node_id || DCI_SWITCH_1== m_mmu->node_id) && ch.l3Prot == 0x11 && (egressCongested || ecnbits)){
+        // if((m_dciAlgEnabled ||9 == m_ccMode) && (DCI_SWITCH_0== m_mmu->node_id || DCI_SWITCH_1== m_mmu->node_id) && ch.l3Prot == 0x11 && (egressCongested || ecnbits)){
 		/** NEW ECN LOGIC **/
 		// 解释：这里只会在 DCI 交换机上为源 DC 内已有 ECN 标记的报文进行 CNP 代理，DCI 交换机本身的 ECN 标记 代理在 SwitchNotifyDequeue 中实现
-		if((DCI_ALG == 1||9 == m_ccMode) && (DCI_SWITCH_0== m_mmu->node_id || DCI_SWITCH_1== m_mmu->node_id) && ch.l3Prot == 0x11 && ecnbits){
+		if((m_dciAlgEnabled ||9 == m_ccMode) && (DCI_SWITCH_0== m_mmu->node_id || DCI_SWITCH_1== m_mmu->node_id) && ch.l3Prot == 0x11 && ecnbits){
 		/** NEW ECN LOGIC **/
 			/** CNP SELECT **/
 			if (m_ccMode == 9)
@@ -725,10 +732,11 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 		// 先测试报文构造可行性
 		// if (DCI_CM_test && m_mmu->node_id == 37)
 		// {
-		// 	FlowKey key= ExtractFlowKey(ch);
-		// 	SendControlMessage(p,idx);
+		// 	// FlowKey key= ExtractFlowKey(ch);
+		// 	// SendControlMessage(p,idx);
 		// 	DCI_CM_test = false;
-		// 	std::cout << "DCI CM" << std::endl;
+		// 	// std::cout << "DCI CM" << std::endl;
+		// 	std::cout << "DCI_FLAG "<<m_dciAlgEnabled << std::endl;
 		// 	// std::cout << "mccmode"<< m_ccMode << std::endl;
 		// }
 		/** Control Message **/
@@ -1065,7 +1073,7 @@ void SwitchNode::SwitchNotifyDequeue(uint32_t ifIndex, uint32_t qIndex, Ptr<Pack
 
 			if (egressCongested)
 			{
-				if (DCI_ALG == 0 && m_ccMode != 9)
+				if (!m_dciAlgEnabled && m_ccMode != 9)
 				{
 					PppHeader ppp;
 					Ipv4Header h;
@@ -1077,7 +1085,7 @@ void SwitchNode::SwitchNotifyDequeue(uint32_t ifIndex, uint32_t qIndex, Ptr<Pack
 				}
 				else if (m_mmu->node_id == DCI_SWITCH_0 || m_mmu->node_id == DCI_SWITCH_1)
 				{
-					if (DCI_ALG == 1 && m_ccMode == 1)
+					if (m_dciAlgEnabled && m_ccMode == 1)
 					{
 						SrcDCICNPGen(p, ifIndex);
 					}

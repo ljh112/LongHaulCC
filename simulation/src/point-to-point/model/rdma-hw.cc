@@ -542,6 +542,7 @@ int RdmaHw::Receive(Ptr<Packet> p, CustomHeader &ch){
 			return 0;
 		}
 		
+		std::cout << "SRC-DCI CNP RECEIVE" << std::endl;
 		//执行 DCQCN 降速处理
 		cnp_received_mlx(qp,true);
 

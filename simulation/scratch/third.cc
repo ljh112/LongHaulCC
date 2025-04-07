@@ -85,6 +85,10 @@ string qlen_mon_file;
 unordered_map<uint64_t, uint32_t> rate2kmax, rate2kmin;
 unordered_map<uint64_t, double> rate2pmax;
 
+/**  DCI ALG FLAG **/
+bool dci_alg_flag = false;
+/**  DCI ALG FLAG **/
+
 /************************************************
  * Runtime varibles
  ***********************************************/
@@ -651,6 +655,15 @@ int main(int argc, char *argv[])
 				conf >> pint_prob;
 				std::cout << "PINT_PROB\t\t\t\t" << pint_prob << '\n';
 			}
+			/**  DCI ALG FLAG **/
+			else if(key.compare("DCI_ALG_FLAG") == 0){
+				conf >>dci_alg_flag;
+				if (dci_alg_flag)
+					std::cout << "ENABLE_DCI_ALG\t\t\t" << "Yes" << "\n";
+				else
+					std::cout << "ENABLE_DCI_ALG\t\t\t" << "No" << "\n";
+			}
+			/**  DCI ALG FLAG **/
 			fflush(stdout);
 		}
 		conf.close();
@@ -962,6 +975,9 @@ int main(int argc, char *argv[])
 			Ptr<SwitchNode> sw = DynamicCast<SwitchNode>(n.Get(i));
 			sw->SetAttribute("CcMode", UintegerValue(cc_mode));
 			sw->SetAttribute("MaxRtt", UintegerValue(maxRtt));
+			/** DCI_ALG **/
+			sw->SetAttribute("DCI_ALG_FLAG", BooleanValue(dci_alg_flag));
+			/** DCI_ALG **/
 		}
 	}
 

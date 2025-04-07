@@ -88,6 +88,9 @@ unordered_map<uint64_t, double> rate2pmax;
 /**  DCI ALG FLAG **/
 bool dci_alg_flag = false;
 /**  DCI ALG FLAG **/
+/** DCI BUFFER SIZE **/
+uint32_t dci_buffer_size = 32000;
+/** DCI BUFFER SIZE **/
 
 /************************************************
  * Runtime varibles
@@ -664,6 +667,12 @@ int main(int argc, char *argv[])
 					std::cout << "ENABLE_DCI_ALG\t\t\t" << "No" << "\n";
 			}
 			/**  DCI ALG FLAG **/
+			/** DCI BUFFER SIZE **/
+			else if(key.compare("DCI_BUFFER_SIZE") == 0){
+				conf >>dci_buffer_size;
+				std::cout << "DCI_BUFFER_SIZE\t\t\t" << dci_buffer_size << "\n";
+			}
+			/** DCI BUFFER SIZE **/
 			fflush(stdout);
 		}
 		conf.close();
@@ -867,22 +876,25 @@ int main(int argc, char *argv[])
 				}
 			}
 			sw->m_mmu->ConfigNPort(sw->GetNDevices()-1);
-			/** BICC **/
-		//	sw->m_mmu->ConfigBufferSize(buffer_size* 1024 * 1024);
-			uint32_t DCI_buffer_size = 41;
-			if(0==i || 37==i){
-				sw->m_mmu->ConfigBufferSize(DCI_buffer_size * 1024 * 1024);
-//				if(0 == i){
-//					sw->m_mmu->isDCI = 1;
-//					std::cout << "set isSendDCI successfully"  << std::endl;
-//				}
-//				if(1 == i){
-//					sw->m_mmu->isDCI = 3;
-//				}
-			}else{
+			/** BUFFER SIZE CONFIGURE **/
+			// sw->m_mmu->ConfigBufferSize(buffer_size* 1024 * 1024);
+			// uint32_t DCI_buffer_size = 41;
+			if (DCI_SWITCH_0 == i || DCI_SWITCH_1 == i)
+			{
+				sw->m_mmu->ConfigBufferSize(dci_buffer_size * 1024 * 1024);
+				//				if(0 == i){
+				//					sw->m_mmu->isDCI = 1;
+				//					std::cout << "set isSendDCI successfully"  << std::endl;
+				//				}
+				//				if(1 == i){
+				//					sw->m_mmu->isDCI = 3;
+				//				}
+			}
+			else
+			{
 				sw->m_mmu->ConfigBufferSize(buffer_size * 1024 * 1024);
 			}
-			/** BICC **/
+			/** BUFFER SIZE CONFIGURE **/
 			sw->m_mmu->node_id = sw->GetId();
 		}
 	}

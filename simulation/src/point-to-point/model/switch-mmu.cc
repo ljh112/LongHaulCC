@@ -25,10 +25,10 @@ namespace ns3 {
 		buffer_size = 12 * 1024 * 1024;
 		reserve = 4 * 1024;
 		resume_offset = 3 * 1024;
-		/** test **/
-		pfc_local = 288 * 1024;
-		pfc_remote = 1 * 1024 * 1024; // 1048576 
-		/** test **/
+		// /** test **/
+		// pfc_local = 288 * 1024;
+		// pfc_remote = 1 * 1024 * 1024; // 1048576 
+		// /** test **/
 
 		// headroom
 		shared_used_bytes = 0;
@@ -114,11 +114,11 @@ namespace ns3 {
 		// uint32_t t = (buffer_size - total_hdrm - total_rsrv - shared_used_bytes) >> pfc_a_shift[port];
 		// std::cout << buffer_size << " " << total_hdrm << " " << total_rsrv << " " << shared_used_bytes << " " << pfc_a_shift[port] << " " << t  << std::endl;
 		/** test **/
-	//	return (buffer_size - total_hdrm - total_rsrv - shared_used_bytes) >> pfc_a_shift[port];
+		return (buffer_size - total_hdrm - total_rsrv - shared_used_bytes) >> pfc_a_shift[port];
 		// uint32_t pfc_Threshold = pfc_remote; // 288 * 1024;
 		// std::cout << "buffer_size: " << buffer_size << std::endl;
-		return buffer_size > 15000000 ? pfc_remote : pfc_local;
-		/** test **/
+		// return buffer_size > 15000000 ? pfc_remote : pfc_local;
+		// /** test **/
 	}
 	uint32_t SwitchMmu::GetSharedUsed(uint32_t port, uint32_t qIndex){
 		uint32_t used = ingress_bytes[port][qIndex];

@@ -52,10 +52,10 @@ public:
 	double pmax[pCnt];
 	uint32_t total_hdrm;
 	uint32_t total_rsrv;
-	/** test **/
-	uint32_t pfc_local;
-	uint32_t pfc_remote;
-	/** test **/
+	// /** test **/
+	// uint32_t pfc_local;
+	// uint32_t pfc_remote;
+	// /** test **/
 
 	/** BICC **/
 //	uint16_t isDCI;

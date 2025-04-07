@@ -736,7 +736,8 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 		// 	// SendControlMessage(p,idx);
 		// 	DCI_CM_test = false;
 		// 	// std::cout << "DCI CM" << std::endl;
-		// 	std::cout << "DCI_FLAG "<<m_dciAlgEnabled << std::endl;
+		// 	// std::cout << "DCI_FLAG "<<m_dciAlgEnabled << std::endl;
+		// 	std::cout <<" DCI_BUFFER_SIZE "<< m_mmu->buffer_size << std::endl;
 		// 	// std::cout << "mccmode"<< m_ccMode << std::endl;
 		// }
 		/** Control Message **/

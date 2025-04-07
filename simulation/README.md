@@ -17,6 +17,7 @@ conda activate hpcc
 Please note if gcc version > 5, compilation will fail due to some ns3 code style.  If this what you encounter, please use:
 
 `CC='gcc-5' CXX='g++-5' ./waf configure`
+CC='gcc-5' CXX='g++-5' ./waf configure
 
 ### Experiment config
 Please see `mix/config.txt` for example. 

@@ -72,8 +72,8 @@ TypeId SwitchNode::GetTypeId (void)
 			MakeDoubleAccessor(&SwitchNode::TimeReset),
 			MakeDoubleChecker<double>())
 	.AddAttribute("maxBW",
-			"The capacity of bandwitch on DCI switch for BiCC (Gbps)",
-			DoubleValue(200),
+			"The capacity of bandwitch on DCI switch for BiCC (Mbps)",
+			DoubleValue(200000),
 			MakeDoubleAccessor(&SwitchNode::maxBW),
 			MakeDoubleChecker<uint64_t>())
 	.AddAttribute("EwmaGain",
@@ -234,7 +234,7 @@ void SwitchNode::CalcEvent()
 			for (auto kv : through_table2)
 			{	
 				uint64_t cnt = kv.second;
-				uint64_t val = std::min((uint64_t)(cnt * 1.0 * 8 / TimeReset * 1e6 / 1024 / 1024 / 1024), maxBW);
+				uint64_t val = std::min((uint64_t)(cnt * 1.0 * 8 / TimeReset*1000/1024), maxBW);
 				totalCnt += val;
 				/** Rate Calc **/
 				FlowKey key = kv.first;
@@ -246,6 +246,7 @@ void SwitchNode::CalcEvent()
 				//                                printf("%llu %llu %llu\n", clock(), key, val);
 				//  				std::cout << through_table.size() << std::endl;
 			}
+			std::cout<< "current long haul rate:" << totalCnt<<std::endl;
 			// std::cout << "====================" << std::endl;
 			/** testDCQCN **
 			for(auto kv : dcqMap){
@@ -506,7 +507,7 @@ void SwitchNode::SrcDCICNPGen(Ptr<Packet> p, uint32_t ifIndex) {
 
    // 发送控制消息
    int idx = GetOutDev(cmPacket, cmHeader);
-   // std::cout << idx << "test " << std::endl;
+//    std::cout << "SRC-DCI CNP GENERATION " << m_mmu->node_id << std::endl;
    m_devices[idx]->SwitchSend(0, cmPacket, cmHeader, true);
 
 }
@@ -717,6 +718,7 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 				SrcDCICNPGen(p, idx);
 			}
 			/** CNP SELECT **/
+			std::cout << "ingress SRC-DCI CNP ECN Clean" << m_mmu->node_id <<std::endl;
 
 			PppHeader ppp;
             Ipv4Header h;
@@ -1076,34 +1078,38 @@ void SwitchNode::SwitchNotifyDequeue(uint32_t ifIndex, uint32_t qIndex, Ptr<Pack
 
 			if (egressCongested)
 			{
-				if (!m_dciAlgEnabled && m_ccMode != 9)
-				{
-					PppHeader ppp;
-					Ipv4Header h;
-					p->RemoveHeader(ppp);
-					p->RemoveHeader(h);
-					h.SetEcn((Ipv4Header::EcnType)0x03);
-					p->AddHeader(h);
-					p->AddHeader(ppp);
-				}
-				else if (m_mmu->node_id == DCI_SWITCH_0 || m_mmu->node_id == DCI_SWITCH_1)
-				{
-					if (m_dciAlgEnabled && m_ccMode == 1)
-					{
-						SrcDCICNPGen(p, ifIndex);
-					}
-					else if (m_ccMode == 9)
-					{
-						sendCNPByDCI(p, ifIndex);
-					}
-					PppHeader ppp;
-					Ipv4Header h;
-					p->RemoveHeader(ppp);
-					p->RemoveHeader(h);
-					h.SetEcn((Ipv4Header::EcnType)0x00);
-					p->AddHeader(h);
-					p->AddHeader(ppp);
-				}
+				/** Bug Fix **/
+				PppHeader ppp;
+				Ipv4Header h;
+				p->RemoveHeader(ppp);
+				p->RemoveHeader(h);
+				h.SetEcn((Ipv4Header::EcnType)0x03);
+				p->AddHeader(h);
+				p->AddHeader(ppp);
+				/** TEST **/
+				std::cout << "Congestion Marked At Switch" << m_mmu->node_id <<std::endl;
+				/** TEST **/
+				/** Bug Fix **/
+				// DCI Egress 处不清除 ECN 标记 -> ECN 作为一种拥塞标志是为了概率减少交换机队列长度
+				// if ((m_mmu->node_id == DCI_SWITCH_0 || m_mmu->node_id == DCI_SWITCH_1) && (m_ccMode == 9||m_dciAlgEnabled) && ch.l3Prot == 0x11)
+				// {
+				// 	if (m_dciAlgEnabled && m_ccMode == 1)
+				// 	{
+				// 		SrcDCICNPGen(p, ifIndex);
+				// 		// std::cout << "SRC-DCI CNP Egress Clean" << std::endl;
+				// 	}
+				// 	else if (m_ccMode == 9)
+				// 	{
+				// 		sendCNPByDCI(p, ifIndex);
+				// 	}
+				// 	PppHeader ppp;
+				// 	Ipv4Header h;
+				// 	p->RemoveHeader(ppp);
+				// 	p->RemoveHeader(h);
+				// 	h.SetEcn((Ipv4Header::EcnType)0x00);
+				// 	p->AddHeader(h);
+				// 	p->AddHeader(ppp);
+				// }
 
 				/** BICC **/
 				// std::cout << m_mmu->node_id << std::endl;

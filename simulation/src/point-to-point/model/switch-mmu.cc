@@ -80,27 +80,31 @@ namespace ns3 {
 	bool SwitchMmu::CheckShouldPause(uint32_t port, uint32_t qIndex){
 		/** test **/
 		// if(buffer_size > 20000000) return false;
-//		if(GetSharedUsed(port, qIndex) > 0)
-//			std::cout << GetSharedUsed(port, qIndex) << std::endl;	
+		// if(GetSharedUsed(port, qIndex) > 0)
+		// 	std::cout << GetSharedUsed(port, qIndex) << std::endl;	
 
-	//	std::cout << qIndex << " " << port << " " << hdrm_bytes[port][qIndex] << " " << GetSharedUsed(port, qIndex) << " " << ingress_bytes[port][qIndex] << " " << egress_bytes[port][qIndex] << std::endl;
+		// std::cout << qIndex << " " << port << " " << hdrm_bytes[port][qIndex] << " " << GetSharedUsed(port, qIndex) << " " << ingress_bytes[port][qIndex] << " " << egress_bytes[port][qIndex] << std::endl;
 
-//		std::cout << GetSharedUsed(port, qIndex) << " " << GetPfcThreshold(port) << std::endl;
-//		return !paused[port][qIndex] && (hdrm_bytes[port][qIndex] > 0 || GetSharedUsed(port, qIndex) >= 0.1 * GetPfcThreshold(port));
+		// std::cout << GetSharedUsed(port, qIndex) << " " << GetPfcThreshold(port) << std::endl;
+		// return !paused[port][qIndex] && (hdrm_bytes[port][qIndex] > 0 || GetSharedUsed(port, qIndex) >= 0.1 * GetPfcThreshold(port));
+		/** test **/
+
 		return !paused[port][qIndex] && (hdrm_bytes[port][qIndex] > 0 || GetSharedUsed(port, qIndex) >= GetPfcThreshold(port));
 	}
 	bool SwitchMmu::CheckShouldResume(uint32_t port, uint32_t qIndex){
-                /** test **
-                if(buffer_size > 15000000 && GetSharedUsed(port, qIndex) > 0)
-                        std::cout << qIndex << " " << port << " " << hdrm_bytes[port][qIndex] << " " << GetSharedUsed(port, qIndex) << " " << ingress_bytes[port][qIndex] << " " << egress_bytes[port][qIndex] << std::endl;
-*/
+        /** test **/
+		// if(buffer_size > 15000000 && GetSharedUsed(port, qIndex) > 0)
+		// 		std::cout << qIndex << " " << port << " " << hdrm_bytes[port][qIndex] << " " << GetSharedUsed(port, qIndex) << " " << ingress_bytes[port][qIndex] << " " << egress_bytes[port][qIndex] << std::endl;
 		// if(buffer_size > 20000000) return false;
-		
+		/** test **/
+
 		if (!paused[port][qIndex])
 			return false;
 		uint32_t shared_used = GetSharedUsed(port, qIndex);
 
-//		return hdrm_bytes[port][qIndex] == 0 && (shared_used == 0 || shared_used + resume_offset <= 10 * GetPfcThreshold(port));
+		/** test **/
+		// return hdrm_bytes[port][qIndex] == 0 && (shared_used == 0 || shared_used + resume_offset <= 10 * GetPfcThreshold(port));
+		/** test **/
 		return hdrm_bytes[port][qIndex] == 0 && (shared_used == 0 || shared_used + resume_offset <= GetPfcThreshold(port));
 	}
 	void SwitchMmu::SetPause(uint32_t port, uint32_t qIndex){
@@ -111,14 +115,15 @@ namespace ns3 {
 	}
 
 	uint32_t SwitchMmu::GetPfcThreshold(uint32_t port){
+		// return (buffer_size - total_hdrm - total_rsrv - shared_used_bytes) >> pfc_a_shift[port];
+		return (buffer_size - total_hdrm - total_rsrv - shared_used_bytes)/4;
+		/** test **/	
 		// uint32_t t = (buffer_size - total_hdrm - total_rsrv - shared_used_bytes) >> pfc_a_shift[port];
 		// std::cout << buffer_size << " " << total_hdrm << " " << total_rsrv << " " << shared_used_bytes << " " << pfc_a_shift[port] << " " << t  << std::endl;
-		/** test **/
-		return (buffer_size - total_hdrm - total_rsrv - shared_used_bytes) >> pfc_a_shift[port];
 		// uint32_t pfc_Threshold = pfc_remote; // 288 * 1024;
 		// std::cout << "buffer_size: " << buffer_size << std::endl;
 		// return buffer_size > 15000000 ? pfc_remote : pfc_local;
-		// /** test **/
+		/** test **/
 	}
 	uint32_t SwitchMmu::GetSharedUsed(uint32_t port, uint32_t qIndex){
 		uint32_t used = ingress_bytes[port][qIndex];

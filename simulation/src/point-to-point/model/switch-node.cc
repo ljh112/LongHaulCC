@@ -738,6 +738,8 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 		// 	// std::cout << "DCI CM" << std::endl;
 		// 	// std::cout << "DCI_FLAG "<<m_dciAlgEnabled << std::endl;
 		// 	std::cout <<" DCI_BUFFER_SIZE "<< m_mmu->buffer_size << std::endl;
+		// 	std::cout <<" DCI RESERVE "<< m_mmu->reserve << std::endl;
+		// 	std::cout <<" DCI resume_offset "<< m_mmu->resume_offset << std::endl;
 		// 	// std::cout << "mccmode"<< m_ccMode << std::endl;
 		// }
 		/** Control Message **/

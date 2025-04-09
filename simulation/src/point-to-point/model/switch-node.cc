@@ -181,7 +181,9 @@ SwitchNode::SwitchNode(){
 	through_table2.clear();
 
 	/** BICC **/
-	rpTimer = Simulator::Schedule(MicroSeconds(TimeReset), &SwitchNode::CalcEvent, this);	
+	if(m_mmu->node_id==DCI_SWITCH_0||m_mmu->node_id==DCI_SWITCH_1){
+		rpTimer = Simulator::Schedule(MicroSeconds(TimeReset), &SwitchNode::CalcEvent, this);	
+	}
 	counter = 0;	
 	/** BICC **/
 
@@ -206,126 +208,126 @@ SwitchNode::SwitchNode(){
 
 void SwitchNode::CalcEvent()
 {
-	if (37 == m_mmu->node_id)
+	// std::cout << counter << std::endl;
+	/*
+			if(counter > 0){
+				uint64_t val = std::min((uint64_t)(counter * 1.0 * 8  / TimeReset * 1e6 /1024 / 1024 / 1024), maxBW);
+	//			uint64_t val = (uint64_t)(counter * 1.0 * 8  / TimeReset * 1e6 /1024 / 1024 / 1024);
+	//			uint64_t val = counter;
+	//			std::cout << clock() << " " << val << std::endl;
+				printf("%u %u\n", clock(), val);
+			}
+			counter = 0;
+	*/
+
+	if (through_table2.size() > 0)
 	{
-		// std::cout << counter << std::endl;
-		/*
-				if(counter > 0){
-					uint64_t val = std::min((uint64_t)(counter * 1.0 * 8  / TimeReset * 1e6 /1024 / 1024 / 1024), maxBW);
-		//			uint64_t val = (uint64_t)(counter * 1.0 * 8  / TimeReset * 1e6 /1024 / 1024 / 1024);
-		//			uint64_t val = counter;
-		//			std::cout << clock() << " " << val << std::endl;
-					printf("%u %u\n", clock(), val);
-				}
-				counter = 0;
-		*/
+		//                      uint64_t val = std::min((uint64_t)(counter * 1.0 * 8  / TimeReset * 1e6 /1024 / 1024 / 1024), maxBW);
+		//                      uint64_t val = (uint64_t)(counter * 1.0 * 8  / TimeReset * 1e6 /1024 / 1024 / 1024);
+		//                      uint64_t val = counter;
+		//                      std::cout << clock() << " " << val << std::endl;
+		//                      printf("%u %u\n", clock(), val);
 
-		if (through_table2.size() > 0)
-		{
-			//                      uint64_t val = std::min((uint64_t)(counter * 1.0 * 8  / TimeReset * 1e6 /1024 / 1024 / 1024), maxBW);
-			//                      uint64_t val = (uint64_t)(counter * 1.0 * 8  / TimeReset * 1e6 /1024 / 1024 / 1024);
-			//                      uint64_t val = counter;
-			//                      std::cout << clock() << " " << val << std::endl;
-			//                      printf("%u %u\n", clock(), val);
+		// through_table[ch.sip] += p->GetSize();
+		uint64_t totalCnt = 0;
+		// std::cout << "====================" << std::endl;
+		for (auto kv : through_table2)
+		{	
+			uint64_t cnt = kv.second;
+			uint64_t val = std::min((uint64_t)(cnt * 1.0 * 8 / TimeReset*1000/1024), maxBW);
+			totalCnt += val;
+			/** Rate Calc **/
+			FlowKey key = kv.first;
+			m_flowTable[key].currentRate = (uint64_t)(cnt * 1.0 * 8 / TimeReset);
+			// std::cout << key.sip << " " << key.dip << " " << key.sport << " " << key.dport << std::endl;
+			// std::cout << m_flowTable[key].currentRate << " "<< cnt << std::endl;
+			/** Rate Calc **/
 
-			// through_table[ch.sip] += p->GetSize();
-			uint64_t totalCnt = 0;
-			// std::cout << "====================" << std::endl;
-			for (auto kv : through_table2)
-			{	
-				uint64_t cnt = kv.second;
-				uint64_t val = std::min((uint64_t)(cnt * 1.0 * 8 / TimeReset*1000/1024), maxBW);
-				totalCnt += val;
-				/** Rate Calc **/
-				FlowKey key = kv.first;
-				m_flowTable[key].currentRate = (uint64_t)(cnt * 1.0 * 8 / TimeReset);
-				// std::cout << key.sip << " " << key.dip << " " << key.sport << " " << key.dport << std::endl;
-				// std::cout << m_flowTable[key].currentRate << " "<< cnt << std::endl;
-				/** Rate Calc **/
-
-				//                                printf("%llu %llu %llu\n", clock(), key, val);
-				//  				std::cout << through_table.size() << std::endl;
-			}
-			// std::cout<< "current long haul rate:" << totalCnt<<std::endl;
-			// std::cout << "====================" << std::endl;
-			/** testDCQCN **
-			for(auto kv : dcqMap){
-					Mlx mlx = kv.second;
+			//                                printf("%llu %llu %llu\n", clock(), key, val);
+			//  				std::cout << through_table.size() << std::endl;
+		}
+		// std::cout<< "current long haul rate:" << totalCnt<<std::endl;
+		// std::cout << "====================" << std::endl;
+		/** testDCQCN **
+		for(auto kv : dcqMap){
+				Mlx mlx = kv.second;
 //                              if(mlx.m_targetRate > DataRate(0))
-					std::cout << mlx.m_rate.GetBitRate()/1000000000 << " " << mlx.m_targetRate.GetBitRate()/1000000000 << std::endl;
-			}
-
-			** testDCQCN **/
-
-			/** testRateLimiting **/
-			for (auto& kv : dcqMap)
-			{
-				//                                Mlx mlx = kv.second;
-				//                              if(mlx.m_targetRate > DataRate(0))
-				// std::cout << mlx.m_rate.GetBitRate()/1000000000 << " " << mlx.m_targetRate.GetBitRate()/1000000000 << std::endl;
-				// kv.second.m_rate = kv.second.m_rate*0.9;
-				// std::cout<<"M_RATE"<<kv.second.m_rate<<std::endl;
-				FlowKey flowId=kv.first;	
-
-				tokenBuckets[flowId] = std::max((uint64_t)(kv.second.m_rate.GetBitRate() * TimeReset / 1000000), (uint64_t)(m_minRate.GetBitRate()* TimeReset / 1000000))/8;
-				/** Rate Limiter **/
-				if(!m_perFlowQueues[flowId].empty()){
-					// 上个时间片内没有将数据包完全发送
-					QueuedPacketInfo info=m_perFlowQueues[flowId].front();
-					Ptr<Packet> t_p=info.packet;
-					int t_outDevIdx=info.outDevIdx;
-					uint32_t t_qIndex=info.qIndex; 
-					CustomHeader ch(CustomHeader::L2_Header | CustomHeader::L3_Header | CustomHeader::L4_Header);;
-
-					// 当 token bucket 足量且对应队列中还有数据包时，执行该队列数据包发送
-					while(!m_perFlowQueues[flowId].empty()&&tokenBuckets[flowId]>t_p->GetSize()){// 注意顺序，非空才可以访问 packet size
-
-						// std::cout<<"=============="<<std::endl;
-						// std::cout<<"SENDING FROM PACKET QUEUE"<< m_perFlowQueues[flowId].size()<<std::endl;
-
-						// 发送数据包
-						m_devices[t_outDevIdx]->SwitchSend(t_qIndex, t_p, ch, true);
-
-						// tokenBucket 减少
-						tokenBuckets[flowId]-=t_p->GetSize();
-
-						// FlowQueue 删除对应信息
-						m_perFlowQueues[flowId].pop();
-						// std::cout<<"PACKET QUEUE EMPTY ?"<<m_perFlowQueues[flowId].empty()<<std::endl;
-						if(m_perFlowQueues[flowId].empty()){
-							// std::cout<<"PACKET QUEUE EMPTY ,BREAK"<<std::endl;
-							break;
-						}
-
-						// 队列非空，获取下一个数据包及其发送信息
-						info=m_perFlowQueues[flowId].front();
-						t_p=info.packet;
-						t_outDevIdx=info.outDevIdx;
-						t_qIndex=info.qIndex;
-						t_p->PeekHeader(ch);
-						// std::cout<<"=============="<<std::endl;
-					}
-					
-					
-				}
-				/** Rate Limiter **/
-
-				// std::cout<<"m_rate:"<<kv.second.m_rate<<std::endl;
-				std::cout<<"TOKEN BUCKET SIZE:"<<tokenBuckets[kv.first]<<" Bytes in 20us"<<std::endl;
-			}
-			/** testRateLimiting **/
-
-			// printf("%llu %llu\n", clock(), std::min(totalCnt,maxBW));
-			//			std::cout << through_table.size() << std::endl;
-			//                        through_table.clear();
+				std::cout << mlx.m_rate.GetBitRate()/1000000000 << " " << mlx.m_targetRate.GetBitRate()/1000000000 << std::endl;
 		}
 
-		//             counter = 0;
-		through_table2.clear();
+		** testDCQCN **/
 
-		Simulator::Cancel(rpTimer);
-		rpTimer = Simulator::Schedule(MicroSeconds(TimeReset), &SwitchNode::CalcEvent, this);
+		/** testRateLimiting **/
+		// dcqMap 只存储跨长距链路的流量信息
+		for (auto& kv : dcqMap)
+		{
+			//                                Mlx mlx = kv.second;
+			//                              if(mlx.m_targetRate > DataRate(0))
+			// std::cout << mlx.m_rate.GetBitRate()/1000000000 << " " << mlx.m_targetRate.GetBitRate()/1000000000 << std::endl;
+			// kv.second.m_rate = kv.second.m_rate*0.9;
+			// std::cout<<"M_RATE"<<kv.second.m_rate<<std::endl;
+			FlowKey flowId=kv.first;	
+
+			tokenBuckets[flowId] = std::max((uint64_t)(kv.second.m_rate.GetBitRate() * TimeReset / 1000000), (uint64_t)(m_minRate.GetBitRate()* TimeReset / 1000000))/8;
+			/** Rate Limiter **/
+			// tokenBucket 中的令牌优先用于队列中缓存数据包的发送
+			if(!m_perFlowQueues[flowId].empty()){
+				// 上个时间片内没有将数据包完全发送
+				QueuedPacketInfo info=m_perFlowQueues[flowId].front();
+				Ptr<Packet> t_p=info.packet;
+				int t_outDevIdx=info.outDevIdx;
+				uint32_t t_qIndex=info.qIndex; 
+				CustomHeader ch(CustomHeader::L2_Header | CustomHeader::L3_Header | CustomHeader::L4_Header);;
+
+				// 当 token bucket 足量且对应队列中还有数据包时，执行该队列数据包发送
+				while(!m_perFlowQueues[flowId].empty()&&tokenBuckets[flowId]>t_p->GetSize()){// 注意顺序，非空才可以访问 packet size
+
+					// std::cout<<"=============="<<std::endl;
+					// std::cout<<"SENDING FROM PACKET QUEUE"<< m_perFlowQueues[flowId].size()<<std::endl;
+
+					// 发送数据包
+					m_devices[t_outDevIdx]->SwitchSend(t_qIndex, t_p, ch, true);
+
+					// tokenBucket 减少
+					tokenBuckets[flowId]-=t_p->GetSize();
+
+					// FlowQueue 删除对应信息
+					m_perFlowQueues[flowId].pop();
+					// std::cout<<"PACKET QUEUE EMPTY ?"<<m_perFlowQueues[flowId].empty()<<std::endl;
+					if(m_perFlowQueues[flowId].empty()){
+						// std::cout<<"PACKET QUEUE EMPTY ,BREAK"<<std::endl;
+						break;
+					}
+
+					// 队列非空，获取下一个数据包及其发送信息
+					info=m_perFlowQueues[flowId].front();
+					t_p=info.packet;
+					t_outDevIdx=info.outDevIdx;
+					t_qIndex=info.qIndex;
+					t_p->PeekHeader(ch);
+					// std::cout<<"=============="<<std::endl;
+				}
+				
+				
+			}
+			/** Rate Limiter **/
+
+			// std::cout<<"m_rate:"<<kv.second.m_rate<<std::endl;
+			std::cout<<"AT SWITCH: "<<m_mmu->node_id<<" TOKEN BUCKET SIZE:"<<tokenBuckets[kv.first]<<" Bytes in 20us"<<std::endl;
+		}
+		/** testRateLimiting **/
+
+		// printf("%llu %llu\n", clock(), std::min(totalCnt,maxBW));
+		//			std::cout << through_table.size() << std::endl;
+		//                        through_table.clear();
 	}
+
+	//             counter = 0;
+	through_table2.clear();
+
+	Simulator::Cancel(rpTimer);
+	rpTimer = Simulator::Schedule(MicroSeconds(TimeReset), &SwitchNode::CalcEvent, this);
+
 }
 
 /** Flow Table **/

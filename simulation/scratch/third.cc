@@ -1088,8 +1088,7 @@ int main(int argc, char *argv[])
 	for (uint32_t i = 0; i < n.GetN(); i++) {
 	 	if (n.Get(i)->GetId() == 37 && n.Get(i)->GetNodeType() == 1) { // 是37号交换机
 	 		Ptr<SwitchNode> sw = DynamicCast<SwitchNode>(n.Get(i));
-	 		std::cout << "打印交换机37的流表信息：" << std::endl;
-			
+
 	 		// 打印流表详细信息
 	 		sw->PrintFlowTable(true);
 			

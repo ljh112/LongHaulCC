@@ -246,7 +246,7 @@ void SwitchNode::CalcEvent()
 				//                                printf("%llu %llu %llu\n", clock(), key, val);
 				//  				std::cout << through_table.size() << std::endl;
 			}
-			std::cout<< "current long haul rate:" << totalCnt<<std::endl;
+			// std::cout<< "current long haul rate:" << totalCnt<<std::endl;
 			// std::cout << "====================" << std::endl;
 			/** testDCQCN **
 			for(auto kv : dcqMap){
@@ -258,14 +258,17 @@ void SwitchNode::CalcEvent()
 			** testDCQCN **/
 
 			/** testRateLimiting **/
-			for (auto kv : dcqMap)
+			for (auto& kv : dcqMap)
 			{
 				//                                Mlx mlx = kv.second;
 				//                              if(mlx.m_targetRate > DataRate(0))
 				// std::cout << mlx.m_rate.GetBitRate()/1000000000 << " " << mlx.m_targetRate.GetBitRate()/1000000000 << std::endl;
+				// kv.second.m_rate = kv.second.m_rate*0.9;
+				// std::cout<<"M_RATE"<<kv.second.m_rate<<std::endl;
 
-				tokenBuckets[kv.first] = std::max((uint64_t)(kv.second.m_targetRate.GetBitRate() * TimeReset / 1000000), m_minRate.GetBitRate());
-				//                              std::cout << kv.first << "   " << tokenBuckets[kv.first] << std::endl;
+				tokenBuckets[kv.first] = std::max((uint64_t)(kv.second.m_rate.GetBitRate() * TimeReset / 1000000), (uint64_t)(m_minRate.GetBitRate()* TimeReset / 1000000))/8;
+				// std::cout<<"m_rate:"<<kv.second.m_rate<<std::endl;
+				std::cout<<"TOKEN BUCKET SIZE:"<<tokenBuckets[kv.first]<<" Bytes in 20us"<<std::endl;
 			}
 			/** testRateLimiting **/
 
@@ -334,8 +337,8 @@ void SwitchNode::PrintFlowTable(bool detailed) {
             std::cout << "  Last Updated: " << stats.lastUpdateTime.GetSeconds() << "s\n";
             std::cout << "---------------------\n";
 
-			std::cout << "  maxQueuePackets: " << stats.maxQueuePackets << " bytes, " 
-                      << stats.maxQueueBytes << " packets\n";
+			std::cout << "  maxQueuePackets: " << stats.maxQueuePackets << " packets, " 
+                      << stats.maxQueueBytes << " bytes\n";
         }
     }
     
@@ -777,6 +780,31 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 		// m_devices[idx]->SwitchSend(qIndex, p, ch);
 		/** TEST **/
 
+		/** Rate Limiter */
+		if (m_dciAlgEnabled && (m_mmu->node_id == DCI_SWITCH_0 || m_mmu->node_id == DCI_SWITCH_1) && ch.l3Prot == 0x11)
+		{
+			FlowKey flowId = ExtractFlowKey(ch);
+			uint32_t s_node = ((ch.sip - 0x0b000001) / 0x00000100);
+			// std::cout<<"SRC NODE:"<<s_node<<std::endl;
+			if ((s_node < DCI_SWITCH_1 && m_mmu->node_id == DCI_SWITCH_1) || (s_node > DCI_SWITCH_1 && m_mmu->node_id == DCI_SWITCH_0))
+			{
+				// DCI 收到 UDP：只处理来自长距链路的流量
+				if (dcqMap.find(flowId) == dcqMap.end())
+				{
+					// 新流，初始化 tokenBucket 大小
+					Mlx mlx;
+					mlx.m_first_cnp = true;
+					mlx.m_rate = lineRate;
+					mlx.m_targetRate = lineRate;
+					// std::cout<<"LINE RATE"<<lineRate<<std::endl;
+					dcqMap[flowId] = mlx;
+					tokenBuckets[flowId] = (uint64_t)((mlx.m_rate.GetBitRate() * TimeReset / 1000000) / 8);
+					std::cout << s_node << " AT SWITCH:" << m_mmu->node_id << " " << tokenBuckets[flowId] << " Bytes in 20us" << std::endl;
+					std::cout<<dcqMap.size()<<" flow Number"<<std::endl;
+				}
+			}
+		}
+		/** Rate Limiter */		
 		/** BiCC third loop **/
 		Ptr<QbbNetDevice> dev = DynamicCast<QbbNetDevice>(m_devices[idx]);
 		uint32_t fip = ch.dip;
@@ -1087,7 +1115,7 @@ void SwitchNode::SwitchNotifyDequeue(uint32_t ifIndex, uint32_t qIndex, Ptr<Pack
 				p->AddHeader(h);
 				p->AddHeader(ppp);
 				/** TEST **/
-				std::cout << "Congestion Marked At Switch" << m_mmu->node_id <<std::endl;
+				// std::cout << "Congestion Marked At Switch" << m_mmu->node_id <<std::endl;
 				/** TEST **/
 				/** Bug Fix **/
 				// DCI Egress 处不清除 ECN 标记 -> ECN 作为一种拥塞标志是为了概率减少交换机队列长度

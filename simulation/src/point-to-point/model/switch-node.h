@@ -282,6 +282,15 @@ public:
 
    	/** DCQCN And RateLimiter **/
 
+	/** **/
+	 struct QueuedPacketInfo {
+		Ptr<Packet> packet;
+		int outDevIdx;
+		uint32_t qIndex; 
+	};
+
+	std::unordered_map<FlowKey,std::queue<QueuedPacketInfo>,FlowKeyHash> m_perFlowQueues;
+
 };
 
 } /* namespace ns3 */

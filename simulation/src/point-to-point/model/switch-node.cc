@@ -265,8 +265,51 @@ void SwitchNode::CalcEvent()
 				// std::cout << mlx.m_rate.GetBitRate()/1000000000 << " " << mlx.m_targetRate.GetBitRate()/1000000000 << std::endl;
 				// kv.second.m_rate = kv.second.m_rate*0.9;
 				// std::cout<<"M_RATE"<<kv.second.m_rate<<std::endl;
+				FlowKey flowId=kv.first;	
 
-				tokenBuckets[kv.first] = std::max((uint64_t)(kv.second.m_rate.GetBitRate() * TimeReset / 1000000), (uint64_t)(m_minRate.GetBitRate()* TimeReset / 1000000))/8;
+				tokenBuckets[flowId] = std::max((uint64_t)(kv.second.m_rate.GetBitRate() * TimeReset / 1000000), (uint64_t)(m_minRate.GetBitRate()* TimeReset / 1000000))/8;
+				/** Rate Limiter **/
+				if(!m_perFlowQueues[flowId].empty()){
+					// 上个时间片内没有将数据包完全发送
+					QueuedPacketInfo info=m_perFlowQueues[flowId].front();
+					Ptr<Packet> t_p=info.packet;
+					int t_outDevIdx=info.outDevIdx;
+					uint32_t t_qIndex=info.qIndex; 
+					CustomHeader ch(CustomHeader::L2_Header | CustomHeader::L3_Header | CustomHeader::L4_Header);;
+
+					// 当 token bucket 足量且对应队列中还有数据包时，执行该队列数据包发送
+					while(!m_perFlowQueues[flowId].empty()&&tokenBuckets[flowId]>t_p->GetSize()){// 注意顺序，非空才可以访问 packet size
+
+						// std::cout<<"=============="<<std::endl;
+						// std::cout<<"SENDING FROM PACKET QUEUE"<< m_perFlowQueues[flowId].size()<<std::endl;
+
+						// 发送数据包
+						m_devices[t_outDevIdx]->SwitchSend(t_qIndex, t_p, ch, true);
+
+						// tokenBucket 减少
+						tokenBuckets[flowId]-=t_p->GetSize();
+
+						// FlowQueue 删除对应信息
+						m_perFlowQueues[flowId].pop();
+						// std::cout<<"PACKET QUEUE EMPTY ?"<<m_perFlowQueues[flowId].empty()<<std::endl;
+						if(m_perFlowQueues[flowId].empty()){
+							// std::cout<<"PACKET QUEUE EMPTY ,BREAK"<<std::endl;
+							break;
+						}
+
+						// 队列非空，获取下一个数据包及其发送信息
+						info=m_perFlowQueues[flowId].front();
+						t_p=info.packet;
+						t_outDevIdx=info.outDevIdx;
+						t_qIndex=info.qIndex;
+						t_p->PeekHeader(ch);
+						// std::cout<<"=============="<<std::endl;
+					}
+					
+					
+				}
+				/** Rate Limiter **/
+
 				// std::cout<<"m_rate:"<<kv.second.m_rate<<std::endl;
 				std::cout<<"TOKEN BUCKET SIZE:"<<tokenBuckets[kv.first]<<" Bytes in 20us"<<std::endl;
 			}
@@ -530,8 +573,10 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 			FlowQueueStats stats;
 			stats.queueBytes = p->GetSize();
 			stats.queuePackets = 1;
-			stats.totalBytes = p->GetSize();
-			stats.totalPackets = 1;
+
+			// 总流量统计更新，只在从交换机发出时计算
+			stats.totalBytes = 0;
+			stats.totalPackets = 0;
 			stats.lastUpdateTime = Simulator::Now();
 			m_flowTable[key] = stats;
 			stats.maxQueueBytes = p->GetSize();  // 初始值即为当前值
@@ -541,8 +586,8 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 			// 更新现有流
 			it->second.queueBytes += p->GetSize();
 			it->second.queuePackets++;
-			it->second.totalBytes += p->GetSize();
-			it->second.totalPackets++;
+			// it->second.totalBytes += p->GetSize();
+			// it->second.totalPackets++;
 			it->second.lastUpdateTime = Simulator::Now();
 
 			// 更新最大队列大小
@@ -788,10 +833,11 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 			// std::cout<<"SRC NODE:"<<s_node<<std::endl;
 			if ((s_node < DCI_SWITCH_1 && m_mmu->node_id == DCI_SWITCH_1) || (s_node > DCI_SWITCH_1 && m_mmu->node_id == DCI_SWITCH_0))
 			{
-				// DCI 收到 UDP：只处理来自长距链路的流量
+				// DCI 处理来自长距链路的 UDP 流，对这些流进行令牌桶限速
+				
+				// 新流，初始化 tokenBucket 及流速大小等信息
 				if (dcqMap.find(flowId) == dcqMap.end())
 				{
-					// 新流，初始化 tokenBucket 大小
 					Mlx mlx;
 					mlx.m_first_cnp = true;
 					mlx.m_rate = lineRate;
@@ -802,7 +848,29 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 					std::cout << s_node << " AT SWITCH:" << m_mmu->node_id << " " << tokenBuckets[flowId] << " Bytes in 20us" << std::endl;
 					std::cout<<dcqMap.size()<<" flow Number"<<std::endl;
 				}
-			}
+
+				// flow 级别流量控制
+				if(tokenBuckets[flowId]>p->GetSize() && m_perFlowQueues[flowId].empty()){
+					// 当前时间片内无流量剩余，且有足够 token
+					// 执行数据包转发
+					tokenBuckets[flowId] -= p->GetSize();
+					m_devices[idx]->SwitchSend(qIndex, p, ch, true);
+					return;
+				}else{
+					// 数据包进入队列
+					// 不执行转发
+					// std::cout<<"=============="<<std::endl;
+					QueuedPacketInfo info;
+					info.packet= p;
+					info.outDevIdx= idx;
+					info.qIndex= qIndex;
+					m_perFlowQueues[flowId].push(info);
+					// std::cout<<"Packet Enqueue "<< m_mmu->node_id<<" TOKEN BUCKET: "<<tokenBuckets[flowId]<<" QUEUE SIZE: "<<m_perFlowQueues[flowId].size()<<std::endl;
+					// std::cout<<"=============="<<std::endl;
+					return;
+				}
+			}	
+
 		}
 		/** Rate Limiter */		
 		/** BiCC third loop **/
@@ -1077,7 +1145,8 @@ void SwitchNode::SwitchNotifyDequeue(uint32_t ifIndex, uint32_t qIndex, Ptr<Pack
 
 	/** Flow Table **/
 	/** 包发送后对对应流表项更新 **/
-	if (ch.l3Prot == 0x11){
+	// 只针对 DCI 交换机
+	if (ch.l3Prot == 0x11 &&(m_mmu->node_id == DCI_SWITCH_0 || m_mmu->node_id == DCI_SWITCH_1)){
 		FlowKey key= ExtractFlowKey(ch);
 		// 查找流记录
 		auto it = m_flowTable.find(key);
@@ -1085,6 +1154,10 @@ void SwitchNode::SwitchNotifyDequeue(uint32_t ifIndex, uint32_t qIndex, Ptr<Pack
 			// 更新现有流
 			it->second.queueBytes -= p->GetSize();
 			it->second.queuePackets--;
+
+			//总流量统计只在从交换机发出时计算
+			it->second.totalBytes += p->GetSize();
+			it->second.totalPackets ++;
 			it->second.lastUpdateTime = Simulator::Now();
 			// if (it->second.queueBytes == 0) {
 			// 	m_flowTable.erase(it); // 删除流记录

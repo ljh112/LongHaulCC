@@ -32,6 +32,10 @@ The direct command to run is:
 
 ./waf --run 'scratch/third mix/config_ls.txt'
 
+gdb 调试
+./waf --run scratch/third --command-template="gdb --args %s mix/config_ls.txt"
+
+
 We provide a `run.py` for automatically *generating config* and *running experiment*. Please `python run.py -h` for usage.
 Example usage:
 `python run.py --cc hp --trace flow --bw 100 --topo topology --hpai 50`

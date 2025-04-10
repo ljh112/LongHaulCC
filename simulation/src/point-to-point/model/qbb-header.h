@@ -64,6 +64,10 @@ public:
   virtual uint32_t Deserialize (Buffer::Iterator start);
   static uint32_t GetBaseSize(); // size without INT
 
+  /** CNP SET **/
+  void ClearCnp();
+  /** CNP SET **/
+  
 private:
   uint16_t sport, dport;
   uint16_t flags;

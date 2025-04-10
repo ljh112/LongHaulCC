@@ -47,6 +47,13 @@ namespace ns3 {
 	void qbbHeader::SetCnp(){
 		flags |= 1 << FLAG_CNP;
 	}
+	
+	/** CNP SET **/
+	void qbbHeader::ClearCnp() {
+    flags &= ~(1 << FLAG_CNP);  
+	}
+	/** CNP SET **/
+
 	/** BICC **/
 	void qbbHeader::SetStart(uint16_t _flags){
 		flags = _flags;

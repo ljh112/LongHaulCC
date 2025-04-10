@@ -820,6 +820,33 @@ void SwitchNode::SendToDev(Ptr<Packet>p, CustomHeader &ch){
 		*/
 		/* BICC */
 
+		/** DCI ACK CNP PROCESS **/
+		if(m_dciAlgEnabled&&(m_mmu->node_id==DCI_SWITCH_0||m_mmu->node_id==DCI_SWITCH_1)&&(ch.l3Prot==0xFD||ch.l3Prot==0xFC)){
+			// 算法开启时，在 DCI 交换机上对 ACK，NACK 报文进行 CNP 检测
+			uint8_t cnp = (ch.ack.flags >> qbbHeader::FLAG_CNP) & 1;
+
+			// 发现 CNP 标志
+			if(cnp){
+				// 清除CNP标记
+				PppHeader ppp;
+				Ipv4Header h;
+				qbbHeader qbb;
+				p->RemoveHeader(ppp);
+				p->RemoveHeader(h);
+				p->RemoveHeader(qbb);
+				qbb.ClearCnp();
+				p->AddHeader(qbb);
+				p->AddHeader(h);
+            	p->AddHeader(ppp);
+
+				// std::cout<<"=============="<<std::endl;
+				// std::cout<<"CNP DETECT AT "<< m_mmu->node_id <<std::endl;
+				// std::cout<<"=============="<<std::endl;
+			}
+
+		}
+		/** DCI ACK CNP PROCESS **/
+
 		m_bytes[inDev][idx][qIndex] += p->GetSize();
 
 		/** TEST **/
